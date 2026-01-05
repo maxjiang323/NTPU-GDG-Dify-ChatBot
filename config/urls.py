@@ -3,12 +3,17 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from apps.chat.views import ChatSessionViewSet, ChatMessageViewSet, GoogleLoginCallback
 
+from apps.accounts.views import login_cancelled_redirect
+
 router = DefaultRouter()
 router.register(r'sessions', ChatSessionViewSet, basename='session')
 router.register(r'messages', ChatMessageViewSet, basename='message')
 
 urlpatterns = [
     path('gdg-ntpu/dify-chatbot/admin/', admin.site.urls),
+    
+    # 攔截 allauth 的取消登入頁面路徑，導向到自定義 view
+    path('accounts/3rdparty/login/cancelled/', login_cancelled_redirect),
     path('accounts/', include('allauth.urls')),  # allauth 的所有 URLs
     
     # API Routes
