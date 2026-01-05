@@ -1,11 +1,23 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from .models import User
+from apps.chat.models import ChatSession
+
+
+class ChatSessionInline(admin.TabularInline):
+    model = ChatSession
+    extra = 0
+    fields = ('id', 'topic', 'created_at', 'updated_at')
+    readonly_fields = ('id', 'created_at', 'updated_at')
+    show_change_link = True
+    can_delete = False
+    ordering = ('-updated_at',)
 
 
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):
     """自訂使用者的 Admin 介面"""
+    inlines = [ChatSessionInline]
 
     # 列表頁顯示的欄位
     list_display = ['username', 'email', 'phone', 'is_staff', 'date_joined']

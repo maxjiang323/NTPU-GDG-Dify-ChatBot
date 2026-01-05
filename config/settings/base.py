@@ -15,8 +15,22 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+]
 
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:8080',
+    'http://127.0.0.1:8080',
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+]
 
 # Application definition
 
@@ -29,10 +43,13 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.sites',  # allauth 需要
+    'corsheaders',
+    'rest_framework',
+    'rest_framework_simplejwt',
 
     # startapp 之後都要到這邊新增 app
-    # 'apps.core', # 新增 core 這個 app
     'apps.accounts', # 新增 accounts 這個 app
+    'apps.chat', # 新增 chat 這個 app   
 
     # allauth 相關
     'allauth',
@@ -52,6 +69,7 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',  # ← 加在這裡 (SecurityMiddleware 之後)
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -155,7 +173,7 @@ ACCOUNT_AUTHENTICATION_METHOD = 'username_email'  # 允許使用 username 或 em
 ACCOUNT_EMAIL_REQUIRED = True  # 註冊時必須填寫 email
 ACCOUNT_EMAIL_VERIFICATION = 'optional'  # email 驗證為選填 (可改為 'mandatory' 強制驗證)
 ACCOUNT_USERNAME_REQUIRED = False  # 社交登入不需要 username，使用 email 即可
-LOGIN_REDIRECT_URL = '/'  # 登入後導向首頁
+LOGIN_REDIRECT_URL = '/api/auth/google/success/'  # 登入後導向至生成 JWT 的 API 端點
 LOGOUT_REDIRECT_URL = '/'  # 登出後導向首頁
 
 # 社交登入設定
@@ -196,3 +214,24 @@ CACHES = {
         'TIMEOUT': 300,  # 預設快取時間 5 分鐘（單位：秒）
     }
 }
+
+# REST Framework Configuration
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication', # Optional: keep session auth for browsable API
+    ),
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+}
+
+from datetime import timedelta
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ROTATE_REFRESH_TOKENS': False,
+    'BLACKLIST_AFTER_ROTATION': False,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
+
