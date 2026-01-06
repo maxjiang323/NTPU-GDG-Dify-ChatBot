@@ -15,7 +15,9 @@
 │       ├── models/         # 聊天相關模型 (Session, Message)
 │       ├── views.py        # 聊天與 Google 登入回傳 API
 │       ├── serializers.py  # DRF 資料序列化
-│       └── admin.py        # 聊天紀錄管理介面
+│       ├── admin.py        # 聊天紀錄管理介面
+│       └── services/       # 服務層
+│           └── dify.py     # Dify API 整合服務 (Streaming)
 ├── config/                 # 專案配置設定
 │   ├── settings/           # 分層設定檔 (Base, Development, Production)
 │   ├── urls.py             # 根路由設定
@@ -40,9 +42,10 @@
 *   **對話 Session**: 每一個對話獨立為一個 `ChatSession`，並與 `dify_conversation_id` 綁定，確保留存 Dify 端的對話上下文。
 *   **訊息紀錄**: `ChatMessage` 模型紀錄了每一筆對話的內容、角色（User/AI/System）與時間戳記，實現後端對話歷史備份。
 
-### 3. Dify 整合流程
-*   後端作為代理 (Proxy) 或協調者，負責管理本地端的對話狀態。
-*   透過 `dify_conversation_id` 與 Dify API 進行通訊，實現前端與 Dify 智能體的互動。
+### 3. Dify 整合與代理 (Proxy)
+*   **後端代理架構**: 前端不再直接與 Dify 通訊，而是透過 Django 後端的 `ChatStreamView` 進行轉發，確保護金鑰 (API Key) 安全性。
+*   **串流轉發**: 後端使用 `StreamingHttpResponse` 將 Dify 的回應即時推送到前端，同時在傳輸完成後自動將完整的對話內容存入資料庫。
+*   **上下文管理**: 透過 `dify_conversation_id` 維持 Dify 端的對話連貫性。
 
 ---
 
@@ -53,8 +56,9 @@
 | `apps/accounts/models/user.py` | 定義自訂使用者欄位 (phone, avatar, bio) 與行為。 |
 | `apps/chat/models/session.py` | 管理聊天室對話，紀錄所屬使用者及對應的 Dify 會話 ID。 |
 | `apps/chat/models/message.py` | 儲存每一條對話訊息的詳細內容與角色。 |
-| `apps/chat/views.py` | 包含 `ChatSessionViewSet` 與 `ChatMessageViewSet`，以及處理 Google 登入後的回傳邏輯。 |
-| `config/settings/base.py` | 專案基礎設定，包含 App 註冊、DRF 全域配置等。 |
+| `apps/chat/views.py` | 包含 `ChatStreamView` (代理串流) 與 `ChatSessionViewSet` 等 API。 |
+| `apps/chat/services/dify.py` | 實作對 Dify API 的封裝，支援串流發送與回應解析。 |
+| `config/settings/base.py` | 專案基礎設定，包含 App 註冊、CORS 允許來源等。 |
 | `pyproject.toml` | 專案依賴清單，透過 `uv` 管理開發與生產環境所需套件。 |
 
 ---
@@ -68,3 +72,4 @@
 1.  安裝依賴: `uv sync`
 2.  執行資料庫遷移: `python manage.py migrate`
 3.  啟動開發伺服器: `python manage.py runserver`
+
