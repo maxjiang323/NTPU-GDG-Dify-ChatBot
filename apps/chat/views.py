@@ -11,6 +11,7 @@ from django.contrib.auth import get_user_model
 from .models.session import ChatSession
 from .models.message import ChatMessage
 from .serializers import ChatSessionSerializer, ChatMessageSerializer
+import os
 
 User = get_user_model()
 
@@ -48,7 +49,7 @@ class GoogleLoginCallback(APIView):
             # Redirect to Frontend with token
             # Note: In production, consider a more secure way than query params, 
             # or ensure the frontend immediately consumes and clears it.
-            frontend_url = "http://localhost:8080" # Default Vite port, confirm if different
+            frontend_url = os.getenv("FRONTEND_URL")
             redirect_url = f"{frontend_url}?token={access_token}&email={request.user.email}"
             return redirect(redirect_url)
         

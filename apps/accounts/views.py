@@ -1,5 +1,6 @@
 from django.shortcuts import redirect
 from django.contrib import messages
+import os
 
 def login_cancelled_redirect(request):
     """
@@ -10,6 +11,7 @@ def login_cancelled_redirect(request):
     storage = messages.get_messages(request)
     for _ in storage:
         pass  # 讀取訊息即會將其從 storage 中移除
-        
-    frontend_login_url = "http://localhost:8080/login"
+    
+    frontend_url = os.getenv("FRONTEND_URL")
+    frontend_login_url = f"{frontend_url}/login"
     return redirect(frontend_login_url)

@@ -9,7 +9,7 @@ load_dotenv()
 DEBUG = False
 
 # 從環境變數讀取允許的主機
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
+ALLOWED_HOSTS = [x.strip() for x in os.getenv('ALLOWED_HOSTS').split(',') if x.strip()]
 
 # 資料庫設定
 # Zeabur 會自動注入 POSTGRES_CONNECTION_STRING
@@ -40,4 +40,4 @@ CSRF_COOKIE_SECURE = True  # CSRF Cookie 只能透過 HTTPS 傳輸
 
 # 信任 Zeabur 的代理伺服器
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-CSRF_TRUSTED_ORIGINS = ["https://tnt-management.zeabur.app"]  # 根據你的 Zeabur 應用程式 URL 設定
+CSRF_TRUSTED_ORIGINS = [x.strip() for x in os.getenv('CSRF_TRUSTED_ORIGINS').split(',') if x.strip()]
