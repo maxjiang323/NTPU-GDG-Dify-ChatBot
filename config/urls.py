@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from apps.chat.views import ChatSessionViewSet, ChatMessageViewSet, GoogleLoginCallback
+from apps.chat.views import ChatSessionViewSet, ChatMessageViewSet, GoogleLoginCallback, ChatStreamView
 
 from apps.accounts.views import login_cancelled_redirect
 
@@ -18,6 +18,7 @@ urlpatterns = [
     
     # API Routes
     path('api/chat/', include(router.urls)),
+    path('api/chat/stream/', ChatStreamView.as_view(), name='chat_stream'),
     path('api/auth/google/success/', GoogleLoginCallback.as_view(), name='google_login_success'),
     
     # path('', include('apps.core.urls')),  # 引入 core app 的 URLs
