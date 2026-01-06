@@ -24,7 +24,7 @@ CSRF_TRUSTED_ORIGINS = [x.strip() for x in os.getenv('CSRF_TRUSTED_ORIGINS').spl
 # Application definition
 
 INSTALLED_APPS = [
-    'daphne',  # 必須放在最前面！
+    # 'daphne',  # 不需要非同步功能，故移除
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
