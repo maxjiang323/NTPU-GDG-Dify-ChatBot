@@ -15,6 +15,16 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+
+ENV = os.getenv("DJANGO_ENV", "local")  # local / staging / production
+
+if ENV == "local":
+    COOKIE_SECURE = False
+    COOKIE_SAMESITE = "Lax"
+else:
+    COOKIE_SECURE = True
+    COOKIE_SAMESITE = "None"
+
 ALLOWED_HOSTS = [x.strip() for x in os.getenv('ALLOWED_HOSTS').split(',') if x.strip()]
 
 CORS_ALLOWED_ORIGINS = [x.strip() for x in os.getenv('CORS_ALLOWED_ORIGINS').split(',') if x.strip()]

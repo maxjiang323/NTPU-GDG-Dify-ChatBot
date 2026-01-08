@@ -7,6 +7,7 @@ from rest_framework import permissions, status
 from rest_framework_simplejwt.tokens import RefreshToken
 import os
 import datetime
+from config.settings.base import COOKIE_SECURE, COOKIE_SAMESITE
 
 def login_cancelled_redirect(request):
     """
@@ -48,8 +49,8 @@ class GoogleLoginCallback(APIView):
                 key='access_token', 
                 value=access_token,
                 httponly=True,
-                secure=False, # Set to True in Production (HTTPS)
-                samesite='Lax', 
+                secure=COOKIE_SECURE,
+                samesite=COOKIE_SAMESITE,
                 max_age=60 * 60 # 1 hour
             )
             
@@ -58,8 +59,8 @@ class GoogleLoginCallback(APIView):
                 key='refresh_token', 
                 value=refresh_token,
                 httponly=True,
-                secure=False, # Set to True in Production (HTTPS)
-                samesite='Lax',
+                secure=COOKIE_SECURE,
+                samesite=COOKIE_SAMESITE,
                 max_age=60 * 60 * 24 # 1 day
             )
             
