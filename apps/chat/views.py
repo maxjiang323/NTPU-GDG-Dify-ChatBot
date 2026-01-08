@@ -36,26 +36,7 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
         # Only allow accessing messages from sessions owned by the user
         return ChatMessage.objects.filter(session__user=self.request.user).order_by('created_at')
 
-class GoogleLoginCallback(APIView):
-    """
-    Callback for Google Login.
-    Exchanges the session/auth from Allauth for a JWT and redirects to Frontend.
-    """
-    permission_classes = [permissions.AllowAny]
 
-    def get(self, request):
-        if request.user.is_authenticated:
-            # Generate JWT
-            refresh = RefreshToken.for_user(request.user)
-            access_token = str(refresh.access_token)
-            
-            # Redirect to Frontend with token
-            # Note: In production, consider a more secure way than query params, 
-            # or ensure the frontend immediately consumes and clears it.
-            frontend_url = os.getenv("FRONTEND_URL")
-            redirect_url = f"{frontend_url}?token={access_token}&email={request.user.email}"
-            return redirect(redirect_url)
-        
 
 class ChatStreamView(APIView):
     """
