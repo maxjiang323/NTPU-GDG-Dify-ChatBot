@@ -69,6 +69,7 @@ class ChatStreamView(APIView):
         dify_service = DifyService()
         
         def stream_generator():
+            yield f"data: {json.dumps({'event': 'session_created', 'session_id': str(session.id)})}\n\n"
             full_answer = ""
             try:
                 for chunk in dify_service.stream_chat(
