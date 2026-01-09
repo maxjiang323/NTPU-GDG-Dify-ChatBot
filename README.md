@@ -1,6 +1,6 @@
-# Dify ChatBot Backend
+# Dify ChatBot Backend (NTPU LawHelper)
 
-這是一個基於 Django 框架開發的聊天機器人後端 API 服務，主要用於整合 Dify 平台，提供使用者驗證、聊天對話管理及訊息紀錄儲存等功能。
+這是一個基於 Django 框架開發的聊天機器人後端 API 服務，主要用於整合 Dify 平台，提供使用者驗證、聊天對話管理及訊息紀錄儲存等功能。本系統目前服務於 **NTPU LawHelper (北大法規問答小幫手)**。
 
 ## 專案結構 (Project Tree)
 
@@ -9,11 +9,12 @@
 ├── apps/                   # Django 應用程式目錄
 │   ├── accounts/           # 使用者帳號與驗證模組
 │   │   ├── models/         # 使用者模型定義 (自訂 User)
-│   │   ├── views.py        # 帳號相關 API 視圖
+│   │   ├── views.py        # 帳號相關 API 視圖 (Google Callback, Auth Status)
+│   │   ├── authentication.py # 自定義 CookieJWTAuthentication
 │   │   └── admin.py        # 管理介面設定
 │   └── chat/               # 聊天功能模組
 │       ├── models/         # 聊天相關模型 (Session, Message)
-│       ├── views.py        # 聊天與 Google 登入回傳 API
+│       ├── views.py        # 聊天代理 (Streaming) 與 Session 管理 API
 │       ├── serializers.py  # DRF 資料序列化
 │       ├── admin.py        # 聊天紀錄管理介面
 │       └── services/       # 服務層
@@ -22,7 +23,7 @@
 │   ├── settings/           # 分層設定檔 (Base, Development, Production)
 │   ├── urls.py             # 根路由設定
 │   ├── wsgi.py             # WSGI 入口
-│   └── asgi.py             # ASGI 入口
+│   └── asgi.py             # ASGI 入口 (目前主要使用 WSGI)
 ├── manage.py               # Django 管理腳本
 ├── pyproject.toml          # 專案依賴與工具設定 (使用 uv 管理)
 ├── uv.lock                 # uv 依賴鎖定檔
@@ -31,21 +32,21 @@
 
 ---
 
-## 系統設計 (System Design)
+## 系統設計 (System Architecture)
 
-### 1. 使用者認證系統 (Authentication)
-*   **自訂使用者模型**: 擴展了 Django 內建的 `AbstractUser`，支援頭像、電話與個人簡介。
+### 1. 安全的使用者認證 (High Security Auth)
 *   **Google SSO**: 整合 `django-allauth` 提供 Google 帳號快速登入。
-*   **JWT 認證**: 使用 `rest_framework_simplejwt` 進行無狀態的身分驗證，登入後核發 Access Token 與 Refresh Token。
+*   **HttpOnly Cookies**: 不同於傳統將 JWT 存放在 LocalStorage，本系統將 Access/Refresh Token 儲存於 **HttpOnly, Secure, SameSite** Cookies 中。這有效防禦了 XSS 攻擊，確保權限憑證不被惡意腳本讀取。
+*   **自定義認證後端**: 透過 `CookieJWTAuthentication` 自動從 Cookie 中提取並驗證 JWT。
 
-### 2. 聊天管理系統 (Chat Management)
-*   **對話 Session**: 每一個對話獨立為一個 `ChatSession`，並與 `dify_conversation_id` 綁定，確保留存 Dify 端的對話上下文。
-*   **訊息紀錄**: `ChatMessage` 模型紀錄了每一筆對話的內容、角色（User/AI/System）與時間戳記，實現後端對話歷史備份。
+### 2. 聊天代理與串流 (Chat Proxy & Streaming)
+*   **API 金鑰保護**: 前端不直接與 Dify 通訊，所有請求均由後端 `ChatStreamView` 代理，前端完全接觸不到 Dify API Key。
+*   **即時串流 (SSE)**: 使用 `StreamingHttpResponse` 將 Dify 的 `text/event-stream` 回應即時轉發至前端，實現零延遲的打字機效果。
+*   **自動持久化**: 後端在串流過程結束後，會自動將完整的 USER 訊息與 AI 回答存入資料庫，確保對話紀錄不遺失。
 
-### 3. Dify 整合與代理 (Proxy)
-*   **後端代理架構**: 前端不再直接與 Dify 通訊，而是透過 Django 後端的 `ChatStreamView` 進行轉發，確保護金鑰 (API Key) 安全性。
-*   **串流轉發**: 後端使用 `StreamingHttpResponse` 將 Dify 的回應即時推送到前端，同時在傳輸完成後自動將完整的對話內容存入資料庫。
-*   **上下文管理**: 透過 `dify_conversation_id` 維持 Dify 端的對話連貫性。
+### 3. 多層級資料模型
+*   **ChatSession**: 每一個對話獨立為一個 Session，並綁定一個 `dify_conversation_id` 以維持長期的對話上下文。
+*   **ChatMessage**: 紀錄每筆訊息的角色（USER/AI/SYSTEM）、內容與時間。
 
 ---
 
@@ -53,13 +54,13 @@
 
 | 檔案路徑 | 用途描述 |
 | :--- | :--- |
-| `apps/accounts/models/user.py` | 定義自訂使用者欄位 (phone, avatar, bio) 與行為。 |
+| `apps/accounts/authentication.py` | 實作從 HttpOnly Cookie 讀取 JWT 的認證邏輯。 |
+| `apps/accounts/views.py` | 處理 Google OAuth 回傳並核發 Cookie，以及提供 `/api/auth/status/` 供前端核對狀態。 |
 | `apps/chat/models/session.py` | 管理聊天室對話，紀錄所屬使用者及對應的 Dify 會話 ID。 |
 | `apps/chat/models/message.py` | 儲存每一條對話訊息的詳細內容與角色。 |
-| `apps/chat/views.py` | 包含 `ChatStreamView` (代理串流) 與 `ChatSessionViewSet` 等 API。 |
-| `apps/chat/services/dify.py` | 實作對 Dify API 的封裝，支援串流發送與回應解析。 |
-| `config/settings/base.py` | 專案基礎設定，包含 App 註冊、CORS 允許來源等。 |
-| `pyproject.toml` | 專案依賴清單，透過 `uv` 管理開發與生產環境所需套件。 |
+| `apps/chat/views.py` | 核心代理視圖 `ChatStreamView`，負責協調 Dify API 與資料庫儲存。 |
+| `apps/chat/services/dify.py` | 封裝 Dify API 通訊邏輯，解析 SSE 串流封包。 |
+| `config/settings/base.py` | 包含 Cookie 安全設定 (`COOKIE_SAMESITE`, `COOKIE_SECURE`) 及 CORS 設定。 |
 
 ---
 
@@ -72,4 +73,5 @@
 1.  安裝依賴: `uv sync`
 2.  執行資料庫遷移: `python manage.py migrate`
 3.  啟動開發伺服器: `python manage.py runserver`
+4.  (選配) 使用 `python manage.py createsuperuser` 建立管理員以進入 `/admin` 查看紀錄。
 
