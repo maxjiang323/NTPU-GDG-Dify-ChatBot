@@ -8,6 +8,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 import os
 import datetime
 from config.settings.base import COOKIE_SECURE, COOKIE_SAMESITE
+from rest_framework.authentication import SessionAuthentication
 
 def login_cancelled_redirect(request):
     """
@@ -25,10 +26,16 @@ def login_cancelled_redirect(request):
 
 class GoogleLoginCallback(APIView):
     """
-    Callback for Google Login.
-    Exchanges the session/auth from Allauth for a JWT and redirects to Frontend.
-    Sets HttpOnly cookies for security.
+    Authentication Bridge:
+    This view acts as a bridge between Django's internal Session-based authentication
+    (used by Allauth during the OAuth flow) and the project's JWT-based API.
+
+    We explicitly use [SessionAuthentication] here because:
+    1. The browser is hitting this URL directly after the Google redirect (same-origin).
+    2. We need to read the session set by Allauth to identify the user.
+    3. We want to ignore any invalid JWT cookies that might be lingering in the browser.
     """
+    authentication_classes = [SessionAuthentication]
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
@@ -66,8 +73,12 @@ class GoogleLoginCallback(APIView):
             
             return response
         else:
-            # Not authenticated, redirect to login with error?
-            return redirect(f"{frontend_url}/login?error=auth_failed")
+            # Not authenticated: The OAuth flow failed or was session expired.
+            # We must clear the toxic cookies now, otherwise they will cause 401s elsewhere.
+            response = redirect(f"{frontend_url}/login")
+            response.delete_cookie('access_token', samesite=COOKIE_SAMESITE)
+            response.delete_cookie('refresh_token', samesite=COOKIE_SAMESITE)
+            return response
 
 class AuthStatusView(APIView):
     """
@@ -86,3 +97,16 @@ class AuthStatusView(APIView):
                 "username": user.username
             }
         })
+
+class LogoutView(APIView):
+    """
+    Endpoint to logout user by clearing cookies.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        response = Response({"detail": "Logged out successfully"}, status=status.HTTP_200_OK)
+        # Clear cookies
+        response.delete_cookie('access_token', samesite=COOKIE_SAMESITE)
+        response.delete_cookie('refresh_token', samesite=COOKIE_SAMESITE)
+        return response

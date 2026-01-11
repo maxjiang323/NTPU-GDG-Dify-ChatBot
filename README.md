@@ -55,12 +55,13 @@
 | 檔案路徑 | 用途描述 |
 | :--- | :--- |
 | `apps/accounts/authentication.py` | 實作從 HttpOnly Cookie 讀取 JWT 的認證邏輯。 |
-| `apps/accounts/views.py` | 處理 Google OAuth 回傳並核發 Cookie，以及提供 `/api/auth/status/` 供前端核對狀態。 |
+| `apps/accounts/views.py` | 處理 Google OAuth 成功後的「認證橋接」，核發 Cookie 並提供登出 API。 |
+| `apps/accounts/views.py (LogoutView)` | API 登出入口，負責發送指令叫瀏覽器清除 HttpOnly Cookies。 |
 | `apps/chat/models/session.py` | 管理聊天室對話，紀錄所屬使用者及對應的 Dify 會話 ID。 |
 | `apps/chat/models/message.py` | 儲存每一條對話訊息的詳細內容與角色。 |
 | `apps/chat/views.py` | 核心代理視圖 `ChatStreamView`，負責協調 Dify API 與資料庫儲存。 |
-| `apps/chat/services/dify.py` | 封裝 Dify API 通訊邏輯，解析 SSE 串流封包。 |
-| `config/settings/base.py` | 包含 Cookie 安全設定 (`COOKIE_SAMESITE`, `COOKIE_SECURE`) 及 CORS 設定。 |
+| `apps/chat/services/dify.py` | 封裝 Dify API 通訊邏輯，解析 SSE 串流封包
+| `config/settings/base.py` | 包含安全設定與全域 API 認證類別（僅保留 JWT 認證以防 CSRF）。 |
 
 ---
 
