@@ -37,13 +37,17 @@
 ### 1. 安全的使用者認證 (High Security Auth)
 *   **Google SSO**: 整合 `django-allauth` 提供 Google 帳號快速登入。
 *   **HttpOnly Cookies**: 不同於傳統將 JWT 存放在 LocalStorage，本系統將 Access/Refresh Token 儲存於 **HttpOnly, Secure, SameSite** Cookies 中。這有效防禦了 XSS 攻擊，確保權限憑證不被惡意腳本讀取。
-*   **CSRF 防護機制**: 針對 Cookie-based 認證實作了強制的 CSRF 檢查。前端在進行狀態變更請求（POST, DELETE 等）時，必須攜帶 `X-CSRFToken` 標頭。
+*   **CSRF 防護機制**: 針對 Cookie-based 認證實作了強制的 CSRF 檢查。
+    *   **記憶體共享 Token**: 考慮到跨網域 (Cross-origin) 環境下 JavaScript 無法讀取 Cookie 的限制，後端在 `/api/auth/status/` 的回應中會夾帶 `csrfToken` 字串，供前端儲存於記憶體變數中使用。
 *   **自定義認證後端**: 透過 `CookieJWTAuthentication` 自動從 Cookie 中提取並驗證 JWT，並結合 CSRF 驗證邏輯。
 
 ### 2. 聊天代理與串流 (Chat Proxy & Streaming)
 *   **API 金鑰保護**: 前端不直接與 Dify 通訊，所有請求均由後端 `ChatStreamView` 代理，前端完全接觸不到 Dify API Key。
-*   **即時串流 (SSE)**: 使用 `StreamingHttpResponse` 將 Dify 的 `text/event-stream` 回應即時轉發至前端，實現零延遲的打字機效果。
-*   **自動持久化**: 後端在串流過程結束後，會自動將完整的 USER 訊息與 AI 回答存入資料庫，確保對話紀錄不遺失。
+*   **即時串流 (SSE)**: 使用 `StreamingHttpResponse` 將 Dify 的 `text/event-stream` 回應即時轉發至前端，實現零延遷的打字機效果。
+*   **強健性與超時處理**: 
+    - **Timeout 限制**: 連線 5s / 讀取 30s，防止 Dify 服務異常導致後端掛起。
+    - **錯誤處理**: 當 Dify 無法連線或回應超時時，會自動捕捉異常並發送友好的錯誤 Event 給前端。
+*   **自動持久化**: 後端採取「先存問題、後串流、再存回答」的策略。即使 Dify API 回傳錯誤，使用者的原始問題 (USER role) 也會被優先保留於資料庫，確保紀錄完整性。
 
 ### 3. 多層級資料模型
 *   **ChatSession**: 每一個對話獨立為一個 Session，並綁定一個 `dify_conversation_id` 以維持長期的對話上下文。
