@@ -25,8 +25,16 @@ class DifyService:
             "user": user_id,
         }
 
-        response = requests.post(url, headers=headers, json=payload, stream=True)
-        response.raise_for_status()
+        try:
+            # 加入 timeout (連線 5 秒, 讀取 30 秒) 避免 Dify Server 沒開時無限等待
+            response = requests.post(url, headers=headers, json=payload, stream=True, timeout=(5, 30))
+            response.raise_for_status()
+        except requests.exceptions.Timeout:
+            raise Exception("與法律助手伺服器連線超時，請檢查 Dify 服務是否正常啟動。")
+        except requests.exceptions.ConnectionError:
+            raise Exception("無法連線至法律助手伺服器，請確保 Dify 服務已開啟。")
+        except requests.exceptions.RequestException as e:
+            raise Exception(f"發送訊息失敗: {str(e)}")
 
         for line in response.iter_lines():
             if line:
