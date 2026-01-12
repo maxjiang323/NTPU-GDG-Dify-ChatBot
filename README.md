@@ -37,7 +37,8 @@
 ### 1. 安全的使用者認證 (High Security Auth)
 *   **Google SSO**: 整合 `django-allauth` 提供 Google 帳號快速登入。
 *   **HttpOnly Cookies**: 不同於傳統將 JWT 存放在 LocalStorage，本系統將 Access/Refresh Token 儲存於 **HttpOnly, Secure, SameSite** Cookies 中。這有效防禦了 XSS 攻擊，確保權限憑證不被惡意腳本讀取。
-*   **自定義認證後端**: 透過 `CookieJWTAuthentication` 自動從 Cookie 中提取並驗證 JWT。
+*   **CSRF 防護機制**: 針對 Cookie-based 認證實作了強制的 CSRF 檢查。前端在進行狀態變更請求（POST, DELETE 等）時，必須攜帶 `X-CSRFToken` 標頭。
+*   **自定義認證後端**: 透過 `CookieJWTAuthentication` 自動從 Cookie 中提取並驗證 JWT，並結合 CSRF 驗證邏輯。
 
 ### 2. 聊天代理與串流 (Chat Proxy & Streaming)
 *   **API 金鑰保護**: 前端不直接與 Dify 通訊，所有請求均由後端 `ChatStreamView` 代理，前端完全接觸不到 Dify API Key。
@@ -60,8 +61,8 @@
 | `apps/chat/models/session.py` | 管理聊天室對話，紀錄所屬使用者及對應的 Dify 會話 ID。 |
 | `apps/chat/models/message.py` | 儲存每一條對話訊息的詳細內容與角色。 |
 | `apps/chat/views.py` | 核心代理視圖 `ChatStreamView`，負責協調 Dify API 與資料庫儲存。 |
-| `apps/chat/services/dify.py` | 封裝 Dify API 通訊邏輯，解析 SSE 串流封包
-| `config/settings/base.py` | 包含安全設定與全域 API 認證類別（僅保留 JWT 認證以防 CSRF）。 |
+| `apps/chat/services/dify.py` | 封裝 Dify API 通訊邏輯，解析 SSE 串流封包 |
+| `config/settings/base.py` | 包含安全設定、Cookie 安全原則與全域 CSRF 策略。 |
 
 ---
 

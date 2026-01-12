@@ -33,9 +33,9 @@ class CookieJWTAuthentication(JWTAuthentication):
         if raw_token is None:
             return None
 
-        # Optional: Enforce CSRF if using cookies for state-changing requests
-        # if request.method in ('POST', 'PUT', 'PATCH', 'DELETE'):
-        #     enforce_csrf(request)
+        # Enforce CSRF for cookie-based authentication to prevent CSRF attacks
+        if request.method in ('POST', 'PUT', 'PATCH', 'DELETE'):
+            enforce_csrf(request)
 
         validated_token = self.get_validated_token(raw_token)
         return self.get_user(validated_token), validated_token

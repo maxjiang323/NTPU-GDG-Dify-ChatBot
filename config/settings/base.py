@@ -12,9 +12,6 @@ load_dotenv()
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv('SECRET_KEY')
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
 
 ENV = os.getenv("DJANGO_ENV", "local")  # local / staging / production
 
@@ -24,6 +21,18 @@ if ENV == "local":
 else:
     COOKIE_SECURE = True
     COOKIE_SAMESITE = "None"
+
+# 為了讓前端能透過 document.cookie 讀取到 csrftoken（非 HttpOnly）
+# 這樣前端才能在 POST 請求時從 Cookie 讀取 token 並放入 Header
+CSRF_COOKIE_HTTPONLY = False
+
+# CSRF Cookie 設定，跟隨環境變數 (local/prod)
+CSRF_COOKIE_SECURE = COOKIE_SECURE
+CSRF_COOKIE_SAMESITE = COOKIE_SAMESITE
+
+# Session Cookie 設定，跟隨環境變數 (local/prod)
+SESSION_COOKIE_SECURE = COOKIE_SECURE
+SESSION_COOKIE_SAMESITE = COOKIE_SAMESITE
 
 ALLOWED_HOSTS = [x.strip() for x in os.getenv('ALLOWED_HOSTS').split(',') if x.strip()]
 

@@ -9,6 +9,7 @@ import os
 import datetime
 from config.settings.base import COOKIE_SECURE, COOKIE_SAMESITE
 from rest_framework.authentication import SessionAuthentication
+from django.middleware.csrf import get_token
 
 def login_cancelled_redirect(request):
     """
@@ -95,7 +96,8 @@ class AuthStatusView(APIView):
                 "id": user.id,
                 "email": user.email,
                 "username": user.username
-            }
+            },
+            "csrfToken": get_token(request)
         })
 
 class LogoutView(APIView):
