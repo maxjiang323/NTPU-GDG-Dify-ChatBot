@@ -79,6 +79,9 @@ class GoogleLoginCallback(APIView):
             # Not authenticated: The OAuth flow failed or was session expired.
             # We must clear the toxic cookies now, otherwise they will cause 401s elsewhere.
             response = redirect(f"{frontend_url}/login")
+            
+            # 確保失敗跳轉時也能同步最新的 CSRF 狀態
+            get_token(request) 
             response.delete_cookie('access_token', samesite=COOKIE_SAMESITE)
             response.delete_cookie('refresh_token', samesite=COOKIE_SAMESITE)
             return response
