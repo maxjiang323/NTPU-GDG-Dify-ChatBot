@@ -202,6 +202,7 @@ SOCIALACCOUNT_PROVIDERS = {
         ],
         'AUTH_PARAMS': {
             'access_type': 'online',  # 不需要 refresh token
+            'prompt': 'select_account', # 強制顯示帳號選擇器
         },
         'FETCH_USERINFO': True,  # 從 Google 取得用戶資訊
     }
