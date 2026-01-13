@@ -44,9 +44,10 @@
 ### 2. 聊天代理與串流 (Chat Proxy & Streaming)
 *   **API 金鑰保護**: 前端不直接與 Dify 通訊，所有請求均由後端 `ChatStreamView` 代理，前端完全接觸不到 Dify API Key。
 *   **即時串流 (SSE)**: 使用 `StreamingHttpResponse` 將 Dify 的 `text/event-stream` 回應即時轉發至前端，實現零延遷的打字機效果。
+*   **流量控制 (Rate Limiting)**: 針對 Chat API 實作每分鐘 20 次的請求限制 (`UserRateThrottle`)，防止惡意腳本消耗系統資源或產生過多 LLM 費用。
 *   **強健性與超時處理**: 
     - **Timeout 限制**: 連線 5s / 讀取 30s，防止 Dify 服務異常導致後端掛起。
-    - **錯誤處理**: 當 Dify 無法連線或回應超時時，會自動捕捉異常並發送友好的錯誤 Event 給前端。
+    - **安全錯誤處理**: 發生異常時，後端詳細日誌 (Logging) 紀錄堆棧資訊，但僅回傳通用錯誤訊息給前端，防止內部架構資訊洩露。
 *   **自動持久化**: 後端採取「先存問題、後串流、再存回答」的策略。即使 Dify API 回傳錯誤，使用者的原始問題 (USER role) 也會被優先保留於資料庫，確保紀錄完整性。
 
 ### 3. 多層級資料模型
