@@ -72,6 +72,8 @@ class GoogleLoginCallback(APIView):
                 max_age=60 * 60 * 24 # 1 day
             )
             
+            # Ensure CSRF cookie is set
+            get_token(request)
             return response
         else:
             # Not authenticated: The OAuth flow failed or was session expired.
