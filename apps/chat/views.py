@@ -7,6 +7,8 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from allauth.socialaccount.models import SocialAccount
 from django.contrib.auth import get_user_model
+from rest_framework.throttling import UserRateThrottle
+import logging
 
 from .models.session import ChatSession
 from .models.message import ChatMessage
@@ -17,6 +19,7 @@ import os
 import json
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 class ChatSessionViewSet(viewsets.ModelViewSet):
     serializer_class = ChatSessionSerializer
@@ -37,6 +40,8 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
         return ChatMessage.objects.filter(session__user=self.request.user).order_by('created_at')
 
 
+class ChatRateThrottle(UserRateThrottle):
+    rate = '20/minute'
 
 class ChatStreamView(APIView):
     """
@@ -44,13 +49,14 @@ class ChatStreamView(APIView):
     Saves user and AI messages to the database.
     """
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [ChatRateThrottle]
 
     def post(self, request):
         query = request.data.get('query')
         session_id = request.data.get('session_id')
         
         if not query:
-            return Response({"error": "Query is required"}, status=status.HTTP_400_BAD_MODULE)
+            return Response({"error": "Query is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         # Get or create session
         if session_id:
@@ -95,6 +101,7 @@ class ChatStreamView(APIView):
                     else:
                         yield f"data: {json.dumps(chunk)}\n\n"
             except Exception as e:
-                yield f"data: {json.dumps({'event': 'error', 'message': str(e)})}\n\n"
+                logger.error(f"Chat Stream Error: {str(e)}", exc_info=True)
+                yield f"data: {json.dumps({'event': 'error', 'message': '系統暫時無法處理您的請求，請稍後再試。'})}\n\n"
 
         return StreamingHttpResponse(stream_generator(), content_type='text/event-stream')
