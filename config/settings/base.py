@@ -241,8 +241,8 @@ REST_FRAMEWORK = {
 
 from datetime import timedelta
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'ROTATE_REFRESH_TOKENS': True, # 每次登入都產生新的 refresh token
     'BLACKLIST_AFTER_ROTATION': True, # 登出時將舊的 refresh token 加入黑名單
     'AUTH_HEADER_TYPES': ('Bearer',),
