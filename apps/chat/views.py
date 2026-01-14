@@ -17,6 +17,7 @@ from .services.dify import DifyService
 from django.http import StreamingHttpResponse
 import os
 import json
+import re
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -52,11 +53,27 @@ class ChatStreamView(APIView):
     throttle_classes = [ChatRateThrottle]
 
     def post(self, request):
-        query = request.data.get('query')
+        query = request.data.get('query', '').strip()
         session_id = request.data.get('session_id')
         
+        # Validation: check if query exists
         if not query:
-            return Response({"error": "Query is required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "查詢內容不能為空"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validation: check maximum length (e.g., 2000 chars)
+        MAX_QUERY_LENGTH = 500
+        if len(query) > MAX_QUERY_LENGTH:
+            return Response(
+                {"error": f"查詢內容過長，最多 {MAX_QUERY_LENGTH} 字元"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Validation: check for malicious/non-printable characters
+        if re.search(r'[\x00-\x08\x0B\x0C\x0E-\x1F]', query):
+            return Response(
+                {"error": "查詢內容包含不允許的字元"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         # Get or create session
         if session_id:

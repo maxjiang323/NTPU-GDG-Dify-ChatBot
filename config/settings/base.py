@@ -22,9 +22,8 @@ else:
     COOKIE_SECURE = True
     COOKIE_SAMESITE = "None"
 
-# 為了讓前端能透過 document.cookie 讀取到 csrftoken（非 HttpOnly）
-# 這樣前端才能在 POST 請求時從 Cookie 讀取 token 並放入 Header
-CSRF_COOKIE_HTTPONLY = False
+# CSRF Cookie 不讓 js 讀取，因為已經透過 /api/auth/status 來驗證並設定
+CSRF_COOKIE_HTTPONLY =True
 
 # CSRF Cookie 設定，跟隨環境變數 (local/prod)
 CSRF_COOKIE_SECURE = COOKIE_SECURE
@@ -56,6 +55,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework',
     'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
 
     # startapp 之後都要到這邊新增 app
     'apps.accounts', # 新增 accounts 這個 app
@@ -241,10 +241,10 @@ REST_FRAMEWORK = {
 
 from datetime import timedelta
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-    'ROTATE_REFRESH_TOKENS': False,
-    'BLACKLIST_AFTER_ROTATION': False,
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ROTATE_REFRESH_TOKENS': True, # 每次登入都產生新的 refresh token
+    'BLACKLIST_AFTER_ROTATION': True, # 登出時將舊的 refresh token 加入黑名單
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
