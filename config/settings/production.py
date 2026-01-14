@@ -30,6 +30,23 @@ else:
 SESSION_COOKIE_SECURE = True  # Cookie 只能透過 HTTPS 傳輸
 CSRF_COOKIE_SECURE = True  # CSRF Cookie 只能透過 HTTPS 傳輸
 
-
 # 信任 Zeabur 的代理伺服器
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# ==========================================
+# DRF 安全設定 - 生產環境
+# ==========================================
+REST_FRAMEWORK = {
+    **REST_FRAMEWORK,  # 繼承 base.py 的設定
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',  # 只允許 JSON 輸出，禁用可瀏覽 API
+    ],
+    'EXCEPTION_HANDLER': 'apps.accounts.exceptions.custom_exception_handler',  # 自訂錯誤處理
+}
+
+# 額外的安全 Headers
+SECURE_HSTS_SECONDS = 31536000  # 啟用 HSTS (1 年)
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+SECURE_CONTENT_TYPE_NOSNIFF = True  # 防止 MIME 類型嗅探
+X_FRAME_OPTIONS = 'DENY'  # 防止 Clickjacking 攻擊

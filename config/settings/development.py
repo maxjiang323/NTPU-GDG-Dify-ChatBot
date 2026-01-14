@@ -1,5 +1,8 @@
 from .base import *
 
+# 開發環境設定
+DEBUG = True
+
 # 開發環境使用 SQLite
 DATABASES = {
     'default': {
@@ -9,3 +12,12 @@ DATABASES = {
 }
 
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# 開發環境允許使用 DRF 可瀏覽 API 介面（方便除錯）
+REST_FRAMEWORK = {
+    **REST_FRAMEWORK,  # 繼承 base.py 的設定
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+        'rest_framework.renderers.BrowsableAPIRenderer',  # 開發環境保留可瀏覽介面
+    ],
+}
