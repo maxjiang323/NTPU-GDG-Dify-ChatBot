@@ -11,6 +11,7 @@
 │   │   ├── models/         # 使用者模型定義 (自訂 User)
 │   │   ├── views.py        # 帳號相關 API 視圖 (Google Callback, Auth Status)
 │   │   ├── authentication.py # 自定義 CookieJWTAuthentication
+│   │   ├── exceptions.py   # 自訂錯誤處理器 (生產環境資訊遮蔽)
 │   │   └── admin.py        # 管理介面設定
 │   └── chat/               # 聊天功能模組
 │       ├── models/         # 聊天相關模型 (Session, Message)
@@ -20,7 +21,10 @@
 │       └── services/       # 服務層
 │           └── dify.py     # Dify API 整合服務 (Streaming)
 ├── config/                 # 專案配置設定
-│   ├── settings/           # 分層設定檔 (Base, Development, Production)
+│   ├── settings/           # 分層設定檔
+│   │   ├── base.py         # 共用基礎設定
+│   │   ├── development.py  # 開發環境 (DEBUG=True, 保留 DRF 可瀏覽介面)
+│   │   └── production.py   # 生產環境 (安全強化, 禁用可瀏覽 API)
 │   ├── urls.py             # 根路由設定
 │   ├── wsgi.py             # WSGI 入口
 │   └── asgi.py             # ASGI 入口 (目前主要使用 WSGI)
@@ -50,7 +54,38 @@
     - **安全錯誤處理**: 發生異常時，後端詳細日誌 (Logging) 紀錄堆棧資訊，但僅回傳通用錯誤訊息給前端，防止內部架構資訊洩露。
 *   **自動持久化**: 後端採取「先存問題、後串流、再存回答」的策略。即使 Dify API 回傳錯誤，使用者的原始問題 (USER role) 也會被優先保留於資料庫，確保紀錄完整性。
 
-### 3. 多層級資料模型
+### 3. 環境分離與生產安全強化 (Environment-Specific Security)
+
+本系統採用 **開發/生產分離設定**，確保開發便利性與生產安全性的平衡：
+
+#### 開發環境 (`development.py`)
+*   **DEBUG 模式**: 啟用詳細錯誤追蹤，方便除錯
+*   **DRF 可瀏覽 API**: 保留 `BrowsableAPIRenderer`，提供友善的 API 測試介面
+*   **詳細錯誤訊息**: 完整顯示堆疊追蹤與錯誤細節
+
+#### 生產環境 (`production.py`)
+*   **禁用 DRF 可瀏覽 API**: 只保留 `JSONRenderer`，防止 API 結構與欄位資訊洩露
+*   **自訂錯誤處理器** (`custom_exception_handler`):
+    - **內部詳細日誌**: 完整記錄錯誤堆疊、請求資訊到後端日誌
+    - **外部通用訊息**: 只返回通用的中文錯誤訊息給前端（如「未授權，請先登入」）
+    - **防止資訊洩露**: 避免暴露內部架構、資料庫結構或敏感配置
+*   **安全 Headers 強化**:
+    - `SECURE_HSTS_SECONDS`: 啟用 HSTS (1 年)，強制 HTTPS
+    - `SECURE_CONTENT_TYPE_NOSNIFF`: 防止 MIME 類型嗅探攻擊
+    - `X_FRAME_OPTIONS`: 設為 DENY，防止 Clickjacking 攻擊
+    - `SECURE_HSTS_PRELOAD`: 允許加入瀏覽器 HSTS preload list
+
+**安全效果對比**:
+```
+開發環境訪問 /api/auth/status/
+→ 顯示 DRF 可瀏覽介面，包含 API 文檔、欄位說明、詳細錯誤
+
+生產環境訪問 /api/auth/status/
+→ 只返回 JSON：{"error": "未授權，請先登入", "status_code": 401}
+→ 詳細錯誤只記錄在後端日誌，外部無法存取
+```
+
+### 4. 多層級資料模型
 *   **ChatSession**: 每一個對話獨立為一個 Session，並綁定一個 `dify_conversation_id` 以維持長期的對話上下文。
 *   **ChatMessage**: 紀錄每筆訊息的角色（USER/AI/SYSTEM）、內容與時間。
 
@@ -61,13 +96,16 @@
 | 檔案路徑 | 用途描述 |
 | :--- | :--- |
 | `apps/accounts/authentication.py` | 實作從 HttpOnly Cookie 讀取 JWT 的認證邏輯。 |
+| `apps/accounts/exceptions.py` | 自訂 DRF 錯誤處理器，生產環境中隱藏敏感資訊，只返回通用錯誤訊息。 |
 | `apps/accounts/views.py` | 處理 Google OAuth 成功後的「認證橋接」，核發 Cookie 並提供登出 API。 |
 | `apps/accounts/views.py (LogoutView)` | API 登出入口，負責發送指令叫瀏覽器清除 HttpOnly Cookies。 |
 | `apps/chat/models/session.py` | 管理聊天室對話，紀錄所屬使用者及對應的 Dify 會話 ID。 |
 | `apps/chat/models/message.py` | 儲存每一條對話訊息的詳細內容與角色。 |
 | `apps/chat/views.py` | 核心代理視圖 `ChatStreamView`，負責協調 Dify API 與資料庫儲存。 |
 | `apps/chat/services/dify.py` | 封裝 Dify API 通訊邏輯，解析 SSE 串流封包 |
-| `config/settings/base.py` | 包含安全設定、Cookie 安全原則與全域 CSRF 策略。 |
+| `config/settings/base.py` | 共用基礎設定，包含安全設定、Cookie 安全原則與全域 CSRF 策略。 |
+| `config/settings/development.py` | 開發環境設定，啟用 DEBUG 與 DRF 可瀏覽 API。 |
+| `config/settings/production.py` | 生產環境設定，禁用可瀏覽 API、啟用錯誤遮蔽與安全 Headers。 |
 
 ---
 
