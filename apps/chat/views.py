@@ -41,7 +41,7 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
 
 
 class ChatRateThrottle(UserRateThrottle):
-    rate = '20/minute'
+    scope = 'chat'
 
 class ChatStreamView(APIView):
     """
