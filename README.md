@@ -40,15 +40,20 @@
 
 ### 1. 安全的使用者認證 (High Security Auth)
 *   **Google SSO**: 整合 `django-allauth` 提供 Google 帳號快速登入。
+*   **JWT 進階安全**: 
+    - **Token 黑名單與輪轉**: 啟用 `SimpleJWT` 的 Token 黑名單 (Blacklist) 與旋轉 (Rotation) 機制。當 Refresh Token 被使用時，會簽發新的並將舊的作廢，降低 Token 遭竊取的風險。
+    - **動態效期控制**: 同步 Access Token 效期為 1 小時，Refresh Token 效期為 1 天，平衡安全性與使用者體驗。
 *   **HttpOnly Cookies**: 不同於傳統將 JWT 存放在 LocalStorage，本系統將 Access/Refresh Token 儲存於 **HttpOnly, Secure, SameSite** Cookies 中。這有效防禦了 XSS 攻擊，確保權限憑證不被惡意腳本讀取。
 *   **CSRF 防護機制**: 針對 Cookie-based 認證實作了強制的 CSRF 檢查。
-    *   **記憶體共享 Token**: 考慮到跨網域 (Cross-origin) 環境下 JavaScript 無法讀取 Cookie 的限制，後端在 `/api/auth/status/` 的回應中會夾帶 `csrfToken` 字串，供前端儲存於記憶體變數中使用。
+    *   **CSRF Cookie 安全強化**: 設定 `CSRF_COOKIE_HTTPONLY = True`，防止 CSRF Token 被 JavaScript 讀取。
+    *   **記憶體共享 Token**: 透過 `/api/auth/status/` 的回應夾帶 `csrfToken` 字串，供前端安全地傳遞檢查碼。
 *   **自定義認證後端**: 透過 `CookieJWTAuthentication` 自動從 Cookie 中提取並驗證 JWT，並結合 CSRF 驗證邏輯。
 
 ### 2. 聊天代理與串流 (Chat Proxy & Streaming)
 *   **API 金鑰保護**: 前端不直接與 Dify 通訊，所有請求均由後端 `ChatStreamView` 代理，前端完全接觸不到 Dify API Key。
 *   **即時串流 (SSE)**: 使用 `StreamingHttpResponse` 將 Dify 的 `text/event-stream` 回應即時轉發至前端，實現零延遷的打字機效果。
 *   **流量控制 (Rate Limiting)**: 針對 Chat API 實作每分鐘 20 次的請求限制 (`UserRateThrottle`)，防止惡意腳本消耗系統資源或產生過多 LLM 費用。
+*   **輸入內容驗證**：在 `ChatStreamView` 實作嚴格的輸入驗證，限制查詢長度（最大 500 字元）並過濾不安全字元，預防注入攻擊。
 *   **強健性與超時處理**: 
     - **Timeout 限制**: 連線 5s / 讀取 30s，防止 Dify 服務異常導致後端掛起。
     - **安全錯誤處理**: 發生異常時，後端詳細日誌 (Logging) 紀錄堆棧資訊，但僅回傳通用錯誤訊息給前端，防止內部架構資訊洩露。
