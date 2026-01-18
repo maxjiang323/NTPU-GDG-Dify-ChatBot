@@ -50,34 +50,3 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 SECURE_CONTENT_TYPE_NOSNIFF = True  # 防止 MIME 類型嗅探
 X_FRAME_OPTIONS = 'DENY'  # 防止 Clickjacking 攻擊
-
-# ==========================================
-# Logging 設定 - 生產環境
-# ==========================================
-# 覆蓋 base.py 的設定，只記錄 WARNING 以上的訊息
-# 這樣一來，Console 就不會出現大量的 Cache HIT/MISS 資訊，只會保留錯誤日誌
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-        },
-    },
-    'root': {
-        'handlers': ['console'],
-        'level': 'WARNING',  # 只記錄 WARNING, ERROR, CRITICAL
-    },
-    'loggers': {
-        'django': {
-            'handlers': ['console'],
-            'level': 'WARNING',
-            'propagate': False,
-        },
-        'apps.chat': {
-            'handlers': ['console'],
-            'level': 'WARNING',  # 這裡也設為 WARNING，隱藏 INFO 級別的快取日誌
-            'propagate': False,
-        },
-    },
-}
