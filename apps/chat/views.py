@@ -9,6 +9,7 @@ from allauth.socialaccount.models import SocialAccount
 from django.contrib.auth import get_user_model
 from rest_framework.throttling import UserRateThrottle
 import logging
+from django.core.cache import cache
 
 from .models.session import ChatSession
 from .models.message import ChatMessage
@@ -29,8 +30,43 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return ChatSession.objects.filter(user=self.request.user).order_by('-updated_at')
 
+    def list(self, request, *args, **kwargs):
+        """
+        List user sessions with Redis caching.
+        Cache key: user_{user_id}_sessions
+        """
+        cache_key = f"user_{request.user.id}_sessions"
+        cached_data = cache.get(cache_key)
+
+        if cached_data is not None:
+            logger.info(f"🟢 Cache HIT for sessions: {cache_key}")
+            return Response(cached_data)
+
+        logger.info(f"🟡 Cache MISS for sessions: {cache_key} - Fetching from DB")
+        response = super().list(request, *args, **kwargs)
+        cache.set(cache_key, response.data, timeout=300)  # 5 minutes
+        return response
+
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+        # Invalidate sessions cache
+        logger.info(f"🔴 Invalidating cache for sessions: user_{self.request.user.id}_sessions")
+        cache.delete(f"user_{self.request.user.id}_sessions")
+
+    def perform_update(self, serializer):
+        super().perform_update(serializer)
+        # Invalidate sessions cache
+        logger.info(f"🔴 Invalidating cache for sessions: user_{self.request.user.id}_sessions")
+        cache.delete(f"user_{self.request.user.id}_sessions")
+
+    def perform_destroy(self, instance):
+        # Invalidate messages cache for this session
+        logger.info(f"🔴 Invalidating cache for messages: session_{instance.id}_messages")
+        cache.delete(f"session_{instance.id}_messages")
+        super().perform_destroy(instance)
+        # Invalidate sessions cache
+        logger.info(f"🔴 Invalidating cache for sessions: user_{self.request.user.id}_sessions")
+        cache.delete(f"user_{self.request.user.id}_sessions")
 
 class ChatMessageViewSet(viewsets.ModelViewSet):
     serializer_class = ChatMessageSerializer
@@ -39,6 +75,34 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         # Only allow accessing messages from sessions owned by the user
         return ChatMessage.objects.filter(session__user=self.request.user).order_by('created_at')
+
+    def list(self, request, *args, **kwargs):
+        """
+        List messages for a session with Redis caching.
+        Expects ?session=<session_id> in query params.
+        Cache key: session_{session_id}_messages
+        """
+        session_id = request.query_params.get('session')
+        
+        if session_id:
+            # Cache key must include USER ID or we must validate ownership before cache lookup.
+            # OR better: Only cache if we are sure the session belongs to the user.
+            cache_key = f"user_{request.user.id}_session_{session_id}_messages"
+            cached_data = cache.get(cache_key)
+            if cached_data is not None:
+                logger.info(f"🟢 Cache HIT for messages: {cache_key}")
+                return Response(cached_data)
+
+            logger.info(f"🟡 Cache MISS for messages: {cache_key} - Fetching from DB")
+            response = super().list(request, *args, **kwargs)
+            
+            # Only cache if response is successful
+            if response.status_code == 200:
+                cache.set(cache_key, response.data, timeout=300)
+            
+            return response
+
+        return super().list(request, *args, **kwargs)
 
 
 class ChatRateThrottle(UserRateThrottle):
@@ -85,9 +149,21 @@ class ChatStreamView(APIView):
             # Create a default topic or use part of the query
             topic = query[:50] + "..." if len(query) > 50 else query
             session = ChatSession.objects.create(user=request.user, topic=topic)
+            # Invalidate user sessions cache on creation
+            logger.info(f"🔴 Invalidating cache for sessions (new session): user_{request.user.id}_sessions")
+            cache.delete(f"user_{request.user.id}_sessions")
 
         # Save User Message
         ChatMessage.objects.create(session=session, role='USER', content=query)
+        # Invalidate messages cache
+        # Using the same user-scoped key: f"user_{user_id}_session_{session_id}_messages"
+        logger.info(f"🔴 Invalidating cache for messages (new user msg): user_{request.user.id}_session_{session.id}_messages")
+        cache.delete(f"user_{request.user.id}_session_{session.id}_messages")
+
+        # Update session timestamp explicitly to ensure ordering
+        session.save() 
+        logger.info(f"🔴 Invalidating cache for sessions (session update): user_{request.user.id}_sessions")
+        cache.delete(f"user_{request.user.id}_sessions")
 
         dify_service = DifyService()
         
@@ -114,6 +190,14 @@ class ChatStreamView(APIView):
                         
                         # Save AI Message
                         ChatMessage.objects.create(session=session, role='AI', content=full_answer)
+                        
+                        # Invalidate messages cache again for the AI response
+                        # logger cannot be used comfortably inside generator unless we are sure about context, but yes we can.
+                        # Note: StreamingHttpResponse runs in a separate context potentially? 
+                        # Actually standard blocking generator runs in thread worker, logging is fine.
+                        logger.info(f"🔴 Invalidating cache for messages (AI msg): user_{request.user.id}_session_{session.id}_messages")
+                        cache.delete(f"user_{request.user.id}_session_{session.id}_messages")
+                        
                         yield f"data: {json.dumps(chunk)}\n\n"
                     else:
                         yield f"data: {json.dumps(chunk)}\n\n"

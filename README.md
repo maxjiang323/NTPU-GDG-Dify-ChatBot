@@ -94,6 +94,11 @@
 *   **ChatSession**: 每一個對話獨立為一個 Session，並綁定一個 `dify_conversation_id` 以維持長期的對話上下文。
 *   **ChatMessage**: 紀錄每筆訊息的角色（USER/AI/SYSTEM）、內容與時間。
 
+### 5. 效能優化與快取 (Performance & Caching)
+*   **Redis 快取機制**: 使用 Redis 作為快取後端 (`django-redis`)。
+    *   **對話記錄快取**: 針對使用者的 Session 列表與單一 Session 的訊息記錄進行快取 (TTL 5分鐘)，大幅減少資料庫查詢負擔。
+    *   **Rate Limiting**: 同時作為 DRF Throttle 的後端儲存，高效追踪 API 請求頻率。
+
 ---
 
 ## 重要檔案用途說明
