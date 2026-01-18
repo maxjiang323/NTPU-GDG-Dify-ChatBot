@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.conf import settings
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
@@ -10,6 +10,7 @@ from django.contrib.auth import get_user_model
 from rest_framework.throttling import UserRateThrottle
 import logging
 from django.core.cache import cache
+from django.db import transaction
 
 from .models.session import ChatSession
 from .models.message import ChatMessage
@@ -61,8 +62,8 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
 
     def perform_destroy(self, instance):
         # Invalidate messages cache for this session
-        logger.info(f"🔴 Invalidating cache for messages: session_{instance.id}_messages")
-        cache.delete(f"session_{instance.id}_messages")
+        logger.info(f"🔴 Invalidating cache for messages: user_{self.request.user.id}_session_{instance.id}_messages")
+        cache.delete(f"user_{self.request.user.id}_session_{instance.id}_messages")
         super().perform_destroy(instance)
         # Invalidate sessions cache
         logger.info(f"🔴 Invalidating cache for sessions: user_{self.request.user.id}_sessions")
@@ -80,24 +81,48 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
         """
         List messages for a session with Redis caching.
         Expects ?session=<session_id> in query params.
-        Cache key: session_{session_id}_messages
+        Cache key: user_{user_id}_session_{session_id}_messages
         """
         session_id = request.query_params.get('session')
         
         if session_id:
-            # Cache key must include USER ID or we must validate ownership before cache lookup.
-            # OR better: Only cache if we are sure the session belongs to the user.
-            cache_key = f"user_{request.user.id}_session_{session_id}_messages"
-            cached_data = cache.get(cache_key)
-            if cached_data is not None:
-                logger.info(f"🟢 Cache HIT for messages: {cache_key}")
-                return Response(cached_data)
+            # Security Fix: Explicitly verify session ownership before ANY cache lookup.
+            # This prevents accessing cache of another user if cache key construction fails
+            # or if collision occurs, although we use user_id in key.
+            # It mainly ensures we don't return cached data for a session the user lost access to.
+            # Using get_object_or_404 triggers a DB call, which sounds counter-intuitive for caching?
+            # HOWEVER, ChatSession lookup is very fast (PK index) compared to fetching all messages.
+            # AND it is a necessary security gate.
+            
+            # Note: get_object_or_404(ChatSession, id=session_id, user=request.user)
+            # If session doesn't exist or doesn't belong to user -> 404 immediately.
+            try:
+                # We use specific validation instead of get_object_or_404 to avoid HTML 404 in some setups if direct template
+                # but DRF handles it fine. Let's use filter().first() to be safe and explicit or standard get().
+                if not ChatSession.objects.filter(id=session_id, user=request.user).exists():
+                     # If session invalid, standard logic would return empty list or 404 from get_queryset?
+                     # get_queryset filters by user, so list() would return empty. 
+                     # But here we want to STOP cache lookup.
+                     pass 
+                else:
+                    # Session exists and belongs to user. Safe to proceed with cache lookup.
+                    cache_key = f"user_{request.user.id}_session_{session_id}_messages"
+                    cached_data = cache.get(cache_key)
+                    if cached_data is not None:
+                        logger.info(f"🟢 Cache HIT for messages: {cache_key}")
+                        return Response(cached_data)
 
-            logger.info(f"🟡 Cache MISS for messages: {cache_key} - Fetching from DB")
+                    logger.info(f"🟡 Cache MISS for messages: {cache_key} - Fetching from DB")
+            except Exception:
+                # In case of UUID format error etc, fall through to standard processing
+                pass
+
             response = super().list(request, *args, **kwargs)
             
             # Only cache if response is successful
             if response.status_code == 200:
+                # Re-verify we constructed the key correctly if we reached here
+                cache_key = f"user_{request.user.id}_session_{session_id}_messages"
                 cache.set(cache_key, response.data, timeout=300)
             
             return response
@@ -153,17 +178,27 @@ class ChatStreamView(APIView):
             logger.info(f"🔴 Invalidating cache for sessions (new session): user_{request.user.id}_sessions")
             cache.delete(f"user_{request.user.id}_sessions")
 
-        # Save User Message
-        ChatMessage.objects.create(session=session, role='USER', content=query)
-        # Invalidate messages cache
-        # Using the same user-scoped key: f"user_{user_id}_session_{session_id}_messages"
-        logger.info(f"🔴 Invalidating cache for messages (new user msg): user_{request.user.id}_session_{session.id}_messages")
-        cache.delete(f"user_{request.user.id}_session_{session.id}_messages")
+        # Save User Message with transaction check
+        # Robustness Fix: Use transaction.on_commit to ensure cache deletion happens ONLY after DB commit.
+        # This prevents "stale cache" where delete happens but DB write fails (rare but possible),
+        # or more importantly, ensures race condition where next read happens before DB commit is finalized.
+        with transaction.atomic():
+            ChatMessage.objects.create(session=session, role='USER', content=query)
+            # Invalidate messages cache
+            cache_key_msg = f"user_{request.user.id}_session_{session.id}_messages"
+            # Invalidate sessions cache (update timestamp)
+            cache_key_session = f"user_{request.user.id}_sessions"
 
-        # Update session timestamp explicitly to ensure ordering
-        session.save() 
-        logger.info(f"🔴 Invalidating cache for sessions (session update): user_{request.user.id}_sessions")
-        cache.delete(f"user_{request.user.id}_sessions")
+            # Log first
+            logger.info(f"🔴 Schuduling cache invalidation for: {cache_key_msg} & {cache_key_session}")
+
+            # Schedule invalidation
+            transaction.on_commit(lambda: cache.delete(cache_key_msg))
+            
+            # Explicitly save session to update timestamp
+            session.save() 
+            transaction.on_commit(lambda: cache.delete(cache_key_session))
+
 
         dify_service = DifyService()
         
@@ -184,19 +219,18 @@ class ChatStreamView(APIView):
                     elif event == 'message_end':
                         # Update session with Dify conversation ID
                         dify_conv_id = chunk.get('conversation_id')
-                        if dify_conv_id and not session.dify_conversation_id:
-                            session.dify_conversation_id = dify_conv_id
-                            session.save()
-                        
-                        # Save AI Message
-                        ChatMessage.objects.create(session=session, role='AI', content=full_answer)
-                        
-                        # Invalidate messages cache again for the AI response
-                        # logger cannot be used comfortably inside generator unless we are sure about context, but yes we can.
-                        # Note: StreamingHttpResponse runs in a separate context potentially? 
-                        # Actually standard blocking generator runs in thread worker, logging is fine.
-                        logger.info(f"🔴 Invalidating cache for messages (AI msg): user_{request.user.id}_session_{session.id}_messages")
-                        cache.delete(f"user_{request.user.id}_session_{session.id}_messages")
+                        # Wrap DB updates in atomic block
+                        with transaction.atomic():
+                            if dify_conv_id and not session.dify_conversation_id:
+                                session.dify_conversation_id = dify_conv_id
+                                session.save()
+                            
+                            # Save AI Message
+                            ChatMessage.objects.create(session=session, role='AI', content=full_answer)
+                            
+                            cache_key_ai_msg = f"user_{request.user.id}_session_{session.id}_messages"
+                            logger.info(f"🔴 Schuduling cache invalidation for (AI msg): {cache_key_ai_msg}")
+                            transaction.on_commit(lambda: cache.delete(cache_key_ai_msg))
                         
                         yield f"data: {json.dumps(chunk)}\n\n"
                     else:
