@@ -51,7 +51,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'django.contrib.sites',  # allauth 需要
     'corsheaders',
     'rest_framework',
     'rest_framework_simplejwt',
@@ -60,22 +59,13 @@ INSTALLED_APPS = [
     # startapp 之後都要到這邊新增 app
     'apps.accounts', # 新增 accounts 這個 app
     'apps.chat', # 新增 chat 這個 app   
-
-    # allauth 相關
-    'allauth',
-    'allauth.account',
-    'allauth.socialaccount',
-    'allauth.socialaccount.providers.google',  # Google 登入
 ]
 
-SITE_ID = 1
+
 
 AUTHENTICATION_BACKENDS = [
     # Django 預設的認證後端
     'django.contrib.auth.backends.ModelBackend',
-
-    # allauth 的認證後端 (支援社交登入)
-    'allauth.account.auth_backends.AuthenticationBackend',
 ]
 
 MIDDLEWARE = [
@@ -88,7 +78,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'allauth.account.middleware.AccountMiddleware',  # ← 加在這裡！allauth 必要的 middleware
 ]
 
 
@@ -178,35 +167,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'accounts.User'
 
 
-# allauth 設定
-ACCOUNT_AUTHENTICATION_METHOD = 'username_email'  # 允許使用 username 或 email 登入
-ACCOUNT_EMAIL_REQUIRED = True  # 註冊時必須填寫 email
-ACCOUNT_EMAIL_VERIFICATION = 'optional'  # email 驗證為選填 (可改為 'mandatory' 強制驗證)
-ACCOUNT_USERNAME_REQUIRED = False  # 社交登入不需要 username，使用 email 即可
-LOGIN_REDIRECT_URL = '/api/auth/google/success/'  # 登入後導向至生成 JWT 的 API 端點
-LOGOUT_REDIRECT_URL = '/'  # 登出後導向首頁
 
-# 社交登入設定
-SOCIALACCOUNT_AUTO_SIGNUP = True  # 使用社交登入時自動建立帳號
-SOCIALACCOUNT_QUERY_EMAIL = True  # 向社交平台請求 email
-SOCIALACCOUNT_LOGIN_ON_GET = True  # 直接重定向到 OAuth 頁面，跳過中間確認頁面
-SOCIALACCOUNT_EMAIL_AUTHENTICATION = True  # 允許使用 email 進行社交帳號認證
-SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True  # 自動連結相同 email 的既有帳號
-
-# Google OAuth 設定：指定要取得的資訊範圍
-SOCIALACCOUNT_PROVIDERS = {
-    'google': {
-        'SCOPE': [
-            'profile',  # 取得個人資料（名字、頭像等）
-            'email',    # 取得 email
-        ],
-        'AUTH_PARAMS': {
-            'access_type': 'online',  # 不需要 refresh token
-            'prompt': 'select_account', # 強制顯示帳號選擇器
-        },
-        'FETCH_USERINFO': True,  # 從 Google 取得用戶資訊
-    }
-}
 
 
 # ==========================================

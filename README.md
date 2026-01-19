@@ -39,7 +39,7 @@
 ## 系統設計 (System Architecture)
 
 ### 1. 安全的使用者認證 (High Security Auth)
-*   **Google SSO**: 整合 `django-allauth` 提供 Google 帳號快速登入。
+*   **Google SSO**: 支援 **Google Identity Services** (Client-side Flow)，後端驗證 ID Token 確保來源合法性，提供更現代化的無跳轉登入體驗。支援網域限制 (`ALLOWED_EMAIL_DOMAINS`) 確保僅授權帳號可進入系統。
 *   **JWT 進階安全**: 
     - **Token 黑名單與輪轉**: 啟用 `SimpleJWT` 的 Token 黑名單 (Blacklist) 與旋轉 (Rotation) 機制。當 Refresh Token 被使用時，會簽發新的並將舊的作廢，降低 Token 遭竊取的風險。
     - **動態效期控制**: 同步 Access Token 效期為 1 小時，Refresh Token 效期為 1 天，平衡安全性與使用者體驗。
