@@ -7,123 +7,84 @@ from rest_framework import permissions, status
 from rest_framework_simplejwt.tokens import RefreshToken
 import os
 import datetime
-import uuid
 from config.settings.base import COOKIE_SECURE, COOKIE_SAMESITE
 from rest_framework.authentication import SessionAuthentication
 from django.middleware.csrf import get_token
-from django.contrib.auth import get_user_model
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
-from google.oauth2 import id_token
-from google.auth.transport import requests as google_requests
-import requests
 
-@method_decorator(csrf_exempt, name='dispatch')
-class GoogleAuthCodeLoginView(APIView):
+def login_cancelled_redirect(request):
     """
-    Handle Google Auth Code Login (Redirect Flow).
-    Exchanges authorization code for tokens, then logs user in.
+    當使用者在 SSO 頁面點選取消時，將其導向回前端登入頁面，
+    避免停留在 Django 預設的成功/取消頁面。
     """
+    # 清除 Django 內部的訊息（例如你看到的「成功登入」但其實已取消的誤導訊息）
+    storage = messages.get_messages(request)
+    for _ in storage:
+        pass  # 讀取訊息即會將其從 storage 中移除
+    
+    frontend_url = os.getenv("FRONTEND_URL")
+    frontend_login_url = f"{frontend_url}/login"
+    return redirect(frontend_login_url)
+
+class GoogleLoginCallback(APIView):
+    """
+    Authentication Bridge:
+    This view acts as a bridge between Django's internal Session-based authentication
+    (used by Allauth during the OAuth flow) and the project's JWT-based API.
+
+    We explicitly use [SessionAuthentication] here because:
+    1. The browser is hitting this URL directly after the Google redirect (same-origin).
+    2. We need to read the session set by Allauth to identify the user.
+    3. We want to ignore any invalid JWT cookies that might be lingering in the browser.
+    """
+    authentication_classes = [SessionAuthentication]
     permission_classes = [permissions.AllowAny]
-    authentication_classes = []
 
-    def post(self, request):
-        code = request.data.get('code')
-        redirect_uri = request.data.get('redirect_uri')
+    def get(self, request):
+        frontend_url = os.getenv("FRONTEND_URL")
         
-        if not code or not redirect_uri:
-            return Response({"error": "Missing code or redirect_uri"}, status=status.HTTP_400_BAD_REQUEST)
-
-        # 1. Exchange Code for Tokens
-        token_endpoint = "https://oauth2.googleapis.com/token"
-        client_id = os.getenv('SOCIAL_AUTH_GOOGLE_CLIENT_ID')
-        client_secret = os.getenv('SOCIAL_AUTH_GOOGLE_CLIENT_SECRET')
-        
-        if not client_id or not client_secret:
-             return Response({"error": "Server configuration error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-        payload = {
-            'code': code,
-            'client_id': client_id,
-            'client_secret': client_secret,
-            'redirect_uri': redirect_uri,
-            'grant_type': 'authorization_code'
-        }
-        
-        try:
-            res = requests.post(token_endpoint, data=payload)
-            token_data = res.json()
-            
-            if 'error' in token_data:
-                return Response({"error": token_data.get('error_description', 'Token exchange failed')}, status=status.HTTP_400_BAD_REQUEST)
-                
-            id_token_str = token_data.get('id_token')
-            
-            # 2. Verify ID Token
-            # We verify it to get the claims safely
-            idinfo = id_token.verify_oauth2_token(
-                id_token_str, 
-                google_requests.Request(), 
-                client_id,
-                clock_skew_in_seconds=10
-            )
-            
-            # 3. Get User Info
-            email = idinfo.get('email')
-            if not email:
-                return Response({"error": "Email not provided in token"}, status=status.HTTP_400_BAD_REQUEST)
-
-            # --- Domain Whitelist Check ---
-            allowed_domains_str = os.getenv('ALLOWED_EMAIL_DOMAINS', '')
-            if allowed_domains_str:
-                allowed_domains = [d.strip().lower() for d in allowed_domains_str.split(',') if d.strip()]
-                user_domain = email.split('@')[-1].lower()
-                if user_domain not in allowed_domains:
-                    return Response({
-                        "error": f"不支援使用 @{user_domain} 網域登入，請使用授權網域。"
-                    }, status=status.HTTP_403_FORBIDDEN)
-            
-            name = idinfo.get('name', '')
-            picture = idinfo.get('picture', '')
-            
-            # 4. Find or Create User
-            User = get_user_model()
-            try:
-                user = User.objects.get(email=email)
-            except User.DoesNotExist:
-                username = f"{email.split('@')[0]}_{str(uuid.uuid4())[:8]}"
-                user = User.objects.create_user(
-                    username=username,
-                    email=email,
-                    first_name=name
-                )
-            
-            if hasattr(user, 'avatar') and not user.avatar and picture:
-                user.avatar = picture
-                user.save()
-
-            # 5. Issue JWT
-            refresh = RefreshToken.for_user(user)
+        if request.user.is_authenticated:
+            # Generate JWT
+            refresh = RefreshToken.for_user(request.user)
             access_token = str(refresh.access_token)
             refresh_token = str(refresh)
             
-            response = Response({"detail": "Login successful"})
+            response = redirect(f"{frontend_url}/chat")
             
+            # Set Access Token Cookie (Short-lived)
+            # Use strict/lax settings for SameSite to prevent CSRF, but ensure it works across domains if needed.
+            # Localhost dev usually needs Lax.
             response.set_cookie(
-                key='access_token', value=access_token, httponly=True,
-                secure=COOKIE_SECURE, samesite=COOKIE_SAMESITE, max_age=3600
-            )
-            response.set_cookie(
-                key='refresh_token', value=refresh_token, httponly=True,
-                secure=COOKIE_SECURE, samesite=COOKIE_SAMESITE, max_age=86400
+                key='access_token', 
+                value=access_token,
+                httponly=True,
+                secure=COOKIE_SECURE,
+                samesite=COOKIE_SAMESITE,
+                max_age=60 * 60 # 1 hour
             )
             
-            get_token(request) # Ensure CSRF
+            # Set Refresh Token Cookie (Long-lived)
+            response.set_cookie(
+                key='refresh_token', 
+                value=refresh_token,
+                httponly=True,
+                secure=COOKIE_SECURE,
+                samesite=COOKIE_SAMESITE,
+                max_age=60 * 60 * 24 # 1 day
+            )
+            
+            # Ensure CSRF cookie is set
+            get_token(request)
             return response
-
-        except Exception as e:
-            # print(e)
-            return Response({"error": f"Login failed: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            # Not authenticated: The OAuth flow failed or was session expired.
+            # We must clear the toxic cookies now, otherwise they will cause 401s elsewhere.
+            response = redirect(f"{frontend_url}/login")
+            
+            # 確保失敗跳轉時也能同步最新的 CSRF 狀態
+            get_token(request) 
+            response.delete_cookie('access_token', samesite=COOKIE_SAMESITE)
+            response.delete_cookie('refresh_token', samesite=COOKIE_SAMESITE)
+            return response
 
 class AuthStatusView(APIView):
     """
