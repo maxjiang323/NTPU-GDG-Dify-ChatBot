@@ -34,5 +34,6 @@ urlpatterns = [
         serve, {'document_root': os.path.join(settings.BASE_DIR, 'frontend/Dify-ChatBot-V2/dist')}),
     
     # 讓 React 的 index.html 靜態頁面能被 Django 載入 (SPA Catch-all)
-    re_path(r'^.*$', TemplateView.as_view(template_name='index.html')),  
+    # 排除 admin、api、accounts 路徑，避免攔截 Django 功能頁面
+    re_path(r'^(?!(gdg-ntpu/dify-chatbot/admin|api|accounts|static|media|ws)/).*$', TemplateView.as_view(template_name='index.html')),  
 ]
