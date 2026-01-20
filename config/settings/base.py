@@ -22,8 +22,9 @@ else:
     COOKIE_SECURE = True
     COOKIE_SAMESITE = "None"
 
-# CSRF Cookie 不讓 js 讀取，因為已經透過 /api/auth/status 來驗證並設定
-CSRF_COOKIE_HTTPONLY =True
+# CSRF Cookie 不讓 js 讀取
+CSRF_COOKIE_HTTPONLY = True
+SESSION_COOKIE_HTTPONLY = True
 
 # CSRF Cookie 設定，跟隨環境變數 (local/prod)
 CSRF_COOKIE_SECURE = COOKIE_SECURE
@@ -33,13 +34,15 @@ CSRF_COOKIE_SAMESITE = COOKIE_SAMESITE
 SESSION_COOKIE_SECURE = COOKIE_SECURE
 SESSION_COOKIE_SAMESITE = COOKIE_SAMESITE
 
-ALLOWED_HOSTS = [x.strip() for x in os.getenv('ALLOWED_HOSTS').split(',') if x.strip()]
+# Security - Allowed email domains for social login
+ALLOWED_EMAIL_DOMAINS = [
+    x.strip() for x in os.getenv('ALLOWED_EMAIL_DOMAINS', '').split(',') if x.strip()
+]
 
-CORS_ALLOWED_ORIGINS = [x.strip() for x in os.getenv('CORS_ALLOWED_ORIGINS').split(',') if x.strip()]
+ALLOWED_HOSTS = [x.strip() for x in os.getenv('ALLOWED_HOSTS').split(',') if x.strip()]
 
 CSRF_TRUSTED_ORIGINS = [x.strip() for x in os.getenv('CSRF_TRUSTED_ORIGINS').split(',') if x.strip()]
 
-CORS_ALLOW_CREDENTIALS = True
 
 # Application definition
 
@@ -97,7 +100,9 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [
+            os.path.join(BASE_DIR,"frontend/Dify-ChatBot-V2/dist"), # 告訴 Django 去哪裡找我們的 Template 檔案
+        ],
         'APP_DIRS': True,  # 讓 Django 自動尋找每個 app 下的 templates/ 目錄
         'OPTIONS': {
             'context_processors': [
@@ -160,6 +165,9 @@ USE_TZ = True
 
 # 靜態檔案設定
 STATIC_URL = 'static/'
+STATICFILES_DIRS = [
+    BASE_DIR / 'frontend/Dify-ChatBot-V2/dist'
+]
 STATIC_ROOT = BASE_DIR / 'staticfiles'  # ← 新增:收集後的靜態檔案存放位置
 
 # Whitenoise 設定
@@ -207,6 +215,8 @@ SOCIALACCOUNT_PROVIDERS = {
         'FETCH_USERINFO': True,  # 從 Google 取得用戶資訊
     }
 }
+
+SOCIALACCOUNT_ADAPTER = 'apps.accounts.adapters.CustomSocialAccountAdapter'
 
 
 # ==========================================

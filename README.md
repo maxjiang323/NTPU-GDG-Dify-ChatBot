@@ -47,6 +47,8 @@
 *   **CSRF 防護機制**: 針對 Cookie-based 認證實作了強制的 CSRF 檢查。
     *   **CSRF Cookie 安全強化**: 設定 `CSRF_COOKIE_HTTPONLY = True`，防止 CSRF Token 被 JavaScript 讀取。
     *   **記憶體共享 Token**: 透過 `/api/auth/status/` 的回應夾帶 `csrfToken` 字串，供前端安全地傳遞檢查碼。
+*   **網域存取控制 (Domain Whitelist)**:
+    *   **組織限定登入**: 透過 `CustomSocialAccountAdapter` 實作登入攔截，僅允許 `ALLOWED_EMAIL_DOMAINS` 設定的特定 Email 網域 (如 `ntpu.edu.tw`) 進行登入，非授權網域將被拒絕。
 *   **自定義認證後端**: 透過 `CookieJWTAuthentication` 自動從 Cookie 中提取並驗證 JWT，並結合 CSRF 驗證邏輯。
 
 ### 2. 聊天代理與串流 (Chat Proxy & Streaming)
@@ -99,6 +101,11 @@
     *   **對話記錄快取**: 針對使用者的 Session 列表與單一 Session 的訊息記錄進行快取 (TTL 5分鐘)，大幅減少資料庫查詢負擔。
     *   **Rate Limiting**: 同時作為 DRF Throttle 的後端儲存，高效追踪 API 請求頻率。
 
+### 6. 前端整合架構 (Frontend Integration)
+*   **SPA 統一託管**: 移除原本的前後端分離部署 (CORS) 架構，改由 Django 統一託管 React 打包後的靜態資源 (`dist/`)。
+*   **Single Origin**: 前端與後端運作於同一 Origin，徹底消除 CORS 帶來的安全性與 Cookie 跨域問題 (Third-party Cookies)。
+*   **路由Fallback**: 使用 `re_path` 處理 SPA 路由，將任意路徑指向 `index.html`，交由 React Router 處理前端導航。
+
 ---
 
 ## 重要檔案用途說明
@@ -106,6 +113,7 @@
 | 檔案路徑 | 用途描述 |
 | :--- | :--- |
 | `apps/accounts/authentication.py` | 實作從 HttpOnly Cookie 讀取 JWT 的認證邏輯。 |
+| `apps/accounts/adapters.py` | 擴充 `django-allauth` 邏輯，實作 Email 網域白名單檢查 (Pre-login check)。 |
 | `apps/accounts/exceptions.py` | 自訂 DRF 錯誤處理器，生產環境中隱藏敏感資訊，只返回通用錯誤訊息。 |
 | `apps/accounts/views.py` | 處理 Google OAuth 成功後的「認證橋接」，核發 Cookie 並提供登出 API。 |
 | `apps/accounts/views.py (LogoutView)` | API 登出入口，負責發送指令叫瀏覽器清除 HttpOnly Cookies。 |

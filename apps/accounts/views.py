@@ -21,8 +21,7 @@ def login_cancelled_redirect(request):
     for _ in storage:
         pass  # 讀取訊息即會將其從 storage 中移除
     
-    frontend_url = os.getenv("FRONTEND_URL")
-    frontend_login_url = f"{frontend_url}/login"
+    frontend_login_url = f"/login"
     return redirect(frontend_login_url)
 
 class GoogleLoginCallback(APIView):
@@ -40,19 +39,15 @@ class GoogleLoginCallback(APIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
-        frontend_url = os.getenv("FRONTEND_URL")
-        
         if request.user.is_authenticated:
             # Generate JWT
             refresh = RefreshToken.for_user(request.user)
             access_token = str(refresh.access_token)
             refresh_token = str(refresh)
             
-            response = redirect(f"{frontend_url}/chat")
+            response = redirect(f"/chat")
             
             # Set Access Token Cookie (Short-lived)
-            # Use strict/lax settings for SameSite to prevent CSRF, but ensure it works across domains if needed.
-            # Localhost dev usually needs Lax.
             response.set_cookie(
                 key='access_token', 
                 value=access_token,
@@ -76,9 +71,10 @@ class GoogleLoginCallback(APIView):
             get_token(request)
             return response
         else:
-            # Not authenticated: The OAuth flow failed or was session expired.
-            # We must clear the toxic cookies now, otherwise they will cause 401s elsewhere.
-            response = redirect(f"{frontend_url}/login")
+            # Not authenticated: The OAuth flow failed, was session expired, or domain blocked.
+            # (Note: Specific domain blocks are already handled in the adapter via ImmediateHttpResponse)
+            
+            response = redirect("/login?err_code=AUTH_FAILED")
             
             # 確保失敗跳轉時也能同步最新的 CSRF 狀態
             get_token(request) 

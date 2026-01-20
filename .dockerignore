@@ -1,0 +1,26 @@
+# Exclude version control
+.git
+.gitignore
+
+# Exclude python environment and cache
+.venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+
+# Exclude node artifacts
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Exclude db
+*.sqlite3
+
+# Exclude env files (secrets should be injected at runtime)
+.env
+.env.*
+!.env.example
+
+# Exclude OS files
+.DS_Store

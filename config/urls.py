@@ -5,7 +5,11 @@ from apps.chat.views import ChatSessionViewSet, ChatMessageViewSet, ChatStreamVi
 
 
 from apps.accounts.views import login_cancelled_redirect, GoogleLoginCallback, AuthStatusView, LogoutView
-
+from django.views.generic import TemplateView
+from django.urls import re_path
+from django.conf import settings
+from django.views.static import serve
+import os
 
 router = DefaultRouter()
 router.register(r'sessions', ChatSessionViewSet, basename='session')
@@ -25,6 +29,10 @@ urlpatterns = [
     path('api/auth/status/', AuthStatusView.as_view(), name='auth_status'),
     path('api/auth/logout/', LogoutView.as_view(), name='logout'),
 
+    # Fallback for public assets (lovable-uploads, robots.txt, etc.) if requested without /static/
+    re_path(r'^(?P<path>(lovable-uploads|favicon\.ico|robots\.txt|placeholder\.svg).*)$', 
+        serve, {'document_root': os.path.join(settings.BASE_DIR, 'frontend/Dify-ChatBot-V2/dist')}),
     
-    # path('', include('apps.core.urls')),  # 引入 core app 的 URLs
+    # 讓 React 的 index.html 靜態頁面能被 Django 載入 (SPA Catch-all)
+    re_path(r'^.*$', TemplateView.as_view(template_name='index.html')),  
 ]
