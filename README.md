@@ -1,8 +1,8 @@
 # Dify ChatBot Backend (NTPU LawHelper)
 
-這是一個基於 Django 框架開發的聊天機器人後端 API 服務，主要用於整合 Dify 平台，提供使用者驗證、聊天對話管理及訊息紀錄儲存等功能。本系統目前服務於 **NTPU LawHelper (北大法規問答小幫手)**，部分行動裝置可能無法使用單一登入。
+這是一個基於 Django 框架開發的聊天機器人後端 API 服務，主要用於整合 Dify 平台，提供使用者驗證、聊天對話管理及訊息紀錄儲存等功能。本系統目前服務於 **NTPU LawHelper (北大法規問答小幫手)**。
 
-**目前已將前後端整合 (前端：React, 後端：Django)，但保留原本 Repository 的名稱**
+**🎉 前後端已整合：React 前端與 Django 後端共享同一部署環境，無需分開部署。**
 
 **上屆使用的聊天機器人前端專案 (Lovable)**
 **URL**: https://lovable.dev/projects/143b11e0-fb4c-47b9-b578-7c14f8113770
@@ -17,7 +17,9 @@
 - PostgreSQL 或 SQLite (開發環境)
 - Redis (快取與 Token 黑名單)
 
-### 後端安裝與運行
+### 開發環境運行 (前後端合併)
+
+#### 1. 後端啟動
 
 ```bash
 # 克隆專案
@@ -32,6 +34,7 @@ pip install -r requirements.txt
 # 設定環境變數
 cp .env.example .env
 # 編輯 .env，填入必要配置 (Dify API Key, ALLOWED_EMAIL_DOMAINS 等)
+# 確保 DJANGO_ENV=local (開發環境)
 
 # 資料庫遷移
 python manage.py migrate
@@ -39,12 +42,12 @@ python manage.py migrate
 # 建立超級使用者 (可選)
 python manage.py createsuperuser
 
-# 開發模式運行
+# 開發模式運行後端
 python manage.py runserver
-# 服務器在 http://localhost:8000
+# 後端服務器在 http://localhost:8000
 ```
 
-### 前端安裝與運行
+#### 2. 前端啟動 (另開終端)
 
 ```bash
 cd frontend/Dify-ChatBot-V2
@@ -54,10 +57,26 @@ npm install
 
 # 開發模式
 npm run dev
-# 前端在 http://localhost:8080
+# 前端開發伺服器在 http://localhost:8080
 
-# 生產構建
-npm run build
+# 注意：Vite 開發伺服器會將 /api 請求代理至後端 (http://localhost:8000/api)
+```
+
+---
+
+## 認證機制說明
+
+本項目採用 **JWT + HttpOnly Cookie + CSRF 防護** 的三層安全機制：
+
+### Cookie 配置 (自動根據環境設置)
+```python
+# config/settings/base.py
+if ENV == "local":
+    COOKIE_SECURE = False      # 開發環境使用 HTTP
+    COOKIE_SAMESITE = "Lax"
+else:
+    COOKIE_SECURE = True       # 生產環境強制 HTTPS
+    COOKIE_SAMESITE = "Lax"    # 前後端同源，無需 None
 ```
 
 ---

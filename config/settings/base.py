@@ -20,7 +20,7 @@ if ENV == "local":
     COOKIE_SAMESITE = "Lax"
 else:
     COOKIE_SECURE = True
-    COOKIE_SAMESITE = "None"
+    COOKIE_SAMESITE = "Lax"
 
 # CSRF Cookie 不讓 js 讀取
 CSRF_COOKIE_HTTPONLY = True
