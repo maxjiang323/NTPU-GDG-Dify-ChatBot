@@ -33,7 +33,7 @@ urlpatterns = [
     re_path(r'^(?P<path>(lovable-uploads|favicon\.ico|robots\.txt|placeholder\.svg).*)$', 
         serve, {'document_root': os.path.join(settings.BASE_DIR, 'frontend/Dify-ChatBot-V2/dist')}),
     
-    # 讓 React 的 index.html 靜態頁面能被 Django 載入 (SPA Catch-all)
-    # 排除 admin、api、accounts 路徑，避免攔截 Django 功能頁面
-    re_path(r'^(?!(gdg-ntpu/dify-chatbot/admin|api|accounts|static|media|ws)/).*$', TemplateView.as_view(template_name='index.html')),  
+    # React SPA Routes (白名單方式 - 明確指定哪些路由由 SPA 處理)
+    # 只有符合以下 pattern 的才由 React 處理，其他回傳 404
+    re_path(r'^(?:$|login(?:/.*)?|chat(?:/.*)?)$', TemplateView.as_view(template_name='index.html')),  
 ]
