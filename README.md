@@ -2,6 +2,10 @@
 
 這是一個基於 Django 框架開發的聊天機器人後端 API 服務，主要用於整合 Dify 平台，提供使用者驗證、聊天對話管理及訊息紀錄儲存等功能。本系統目前服務於 **NTPU LawHelper (北大法規問答小幫手)**，部分行動裝置可能無法使用單一登入。
 
+**上屆使用的聊天機器人前端專案 (Lovable)**
+**URL**: https://lovable.dev/projects/143b11e0-fb4c-47b9-b578-7c14f8113770
+
+
 ## 專案結構 (Project Tree)
 
 ```text
