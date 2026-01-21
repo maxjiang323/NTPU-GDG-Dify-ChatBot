@@ -134,32 +134,3 @@ export const sanitizeRedirectUrl = (url: string | undefined): string => {
     // 預設回首頁
     return '/';
 };
-
-/**
- * 針對 CSS 內容的特定清理 (針對 ChartStyle 等使用 dangerouslySetInnerHTML 的情況)
- * 目的：防止透過 </style> 標籤逃逸並執行 XSS，以及防護基本 CSS 注入
- */
-export const sanitizeCss = (css: string): string => {
-    // 1. 基本 HTML 清理（防止 <style> 跳脫）
-    let clean = purifier.sanitize(css, {
-        ALLOWED_TAGS: [],
-        ALLOWED_ATTR: [],
-        RETURN_DOM: false,
-        RETURN_DOM_FRAGMENT: false,
-    });
-
-    // 2. 移除 </style> 字串，物理性防止標籤逃逸
-    clean = clean.replace(/<\/style>/gi, "");
-
-    // 3. 過濾 CSS url(...) 設定 (防止 javascript: 偽協議或惡意外部連線)
-    clean = clean.replace(/url\s*\(([^)]+)\)/gi, (match, url) => {
-        // 移除引號與多餘空白
-        const trimmedUrl = url.trim().replace(/^(['"])(.*)\1$/, '$2');
-        return `url("${sanitizeUrl(trimmedUrl)}")`;
-    });
-
-    // 4. 移除 expression(...) (針對舊版 IE 的 CSS 執行漏洞防護)
-    clean = clean.replace(/expression\s*\([^)]*\)/gi, "");
-
-    return clean;
-};

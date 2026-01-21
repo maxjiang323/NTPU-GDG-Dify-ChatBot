@@ -2,10 +2,23 @@ import * as React from "react"
 import * as RechartsPrimitive from "recharts"
 
 import { cn } from "@/lib/utils"
-import { sanitizeCss } from "@/lib/sanitize"
+
 
 // Format: { THEME_NAME: CSS_SELECTOR }
 const THEMES = { light: "", dark: ".dark" } as const
+
+const isSafeColor = (value: string): boolean => {
+  return (
+    /^#[0-9a-fA-F]{3,8}$/.test(value) ||
+    /^rgb(a)?\(\s*\d+%?\s*,\s*\d+%?\s*,\s*\d+%?(?:\s*,\s*(0|1|0?\.\d+))?\s*\)$/.test(value) ||
+    /^hsl(a)?\(\s*\d+\s*,\s*\d+%\s*,\s*\d+%(?:\s*,\s*(0|1|0?\.\d+))?\s*\)$/.test(value)
+  );
+};
+
+const normalizeColor = (value: string | undefined): string | null => {
+  if (!value) return null;
+  return isSafeColor(value) ? value : null;
+};
 
 export type ChartConfig = {
   [k in string]: {
@@ -68,38 +81,41 @@ ChartContainer.displayName = "Chart"
 
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
   const colorConfig = Object.entries(config).filter(
-    ([_, config]) => config.theme || config.color
-  )
+    ([_, cfg]) => cfg.theme || cfg.color
+  );
 
-  if (!colorConfig.length) {
-    return null
-  }
+  if (!colorConfig.length) return null;
+
+  const css = Object.entries(THEMES)
+    .map(([theme, prefix]) => {
+      // 這裡執行驗證並生成 CSS 變數定義
+      const variableRules = colorConfig
+        .map(([key, itemConfig]) => {
+          const rawColor = itemConfig.theme?.[theme as keyof typeof itemConfig.theme] || itemConfig.color;
+          const safeColor = normalizeColor(rawColor);
+          
+          if (!safeColor) return null; // 驗證失敗：不合法的 CSS 值會在這裡被完全擋掉
+
+          return `--color-${key}: ${safeColor};`;
+        })
+        .filter(Boolean)
+        .join("\n");
+
+      if (!variableRules) return null;
+
+      // 只允許在特定的 [data-chart] 選擇器下注入變數
+      return `${prefix} [data-chart="${id}"] {\n${variableRules}\n}`;
+    })
+    .filter(Boolean)
+    .join("\n");
+
+  if (!css) return null;
 
   return (
-    <style
-      dangerouslySetInnerHTML={{
-        __html: sanitizeCss(
-          Object.entries(THEMES)
-            .map(
-              ([theme, prefix]) => `
-  ${prefix} [data-chart=${id}] {
-  ${colorConfig
-                  .map(([key, itemConfig]) => {
-                    const color =
-                      itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
-                      itemConfig.color
-                    return color ? `  --color-${key}: ${color};` : null
-                  })
-                  .join("\n")}
-  }
-  `
-            )
-            .join("\n")
-        ),
-      }}
-    />
-  )
-}
+    <style dangerouslySetInnerHTML={{ __html: css }} />
+  );
+};
+
 
 const ChartTooltip = RechartsPrimitive.Tooltip
 
