@@ -5,6 +5,7 @@ from apps.chat.views import ChatSessionViewSet, ChatMessageViewSet, ChatStreamVi
 
 
 from apps.accounts.views import login_cancelled_redirect, GoogleLoginCallback, AuthStatusView, LogoutView
+from apps.accounts.views_token_refresh import TokenRefreshView
 from django.views.generic import TemplateView
 from django.urls import re_path
 from django.conf import settings
@@ -28,6 +29,9 @@ urlpatterns = [
     path('api/auth/google/success/', GoogleLoginCallback.as_view(), name='google_login_success'),
     path('api/auth/status/', AuthStatusView.as_view(), name='auth_status'),
     path('api/auth/logout/', LogoutView.as_view(), name='logout'),
+
+    # JWT Token refresh endpoint
+    path('api/auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
     # Fallback for public assets (lovable-uploads, robots.txt, etc.) if requested without /static/
     re_path(r'^(?P<path>(lovable-uploads|favicon\.ico|robots\.txt|placeholder\.svg).*)$', 

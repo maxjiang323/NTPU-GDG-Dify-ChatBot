@@ -7,10 +7,25 @@ interface RequestOptions extends RequestInit {
 
 let internalCsrfToken: string | undefined = undefined;
 
+// ---------- Refresh control ----------
+let isRefreshing = false;
+let refreshPromise: Promise<any> | null = null;
+
+// 儲存失敗時的原始請求資訊
+type PendingRequest = {
+    endpoint: string;
+    options: RequestOptions;
+    resolve: (value: any) => void;
+    reject: (reason?: any) => void;
+};
+let pendingRequests: PendingRequest[] = [];
+
+// ---------- CSRF ----------
 export const getCsrfToken = () => {
     return internalCsrfToken;
 };
 
+// ---------- logout ----------
 const performLogout = async (redirectPath: string = "/login") => {
     const csrfToken = getCsrfToken();
     try {
@@ -37,6 +52,35 @@ const performLogout = async (redirectPath: string = "/login") => {
     }
 };
 
+// refresh token 並重試失敗請求
+async function refreshTokenAndRetryFailedRequests() {
+    try {
+        const resp = await fetchWithTimeout('/api/auth/refresh/', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+        }, 30000);
+        if (!resp.ok) throw new Error('refresh_token_invalid');
+        const data = await resp.json();
+        if (data && data.csrfToken) internalCsrfToken = data.csrfToken;
+        // retry pending requests 時 clone options，避免多次使用同一個 body
+        pendingRequests.forEach(({ endpoint, options, resolve, reject }) => {
+            request(endpoint, { ...options }, true).then(resolve).catch(reject);
+        });
+        pendingRequests = [];
+        return data;
+    } catch (err) {
+        // refresh 失敗，全部 pending request 視為失敗，觸發登出
+        pendingRequests.forEach(({ reject }) => reject(err));
+        pendingRequests = [];
+        performLogout('/login');
+        throw err;
+    } finally {
+        isRefreshing = false;
+        refreshPromise = null;
+    }
+}
+
 const request = async (endpoint: string, options: RequestOptions = {}, isRetry = false): Promise<any> => {
     const csrfToken = getCsrfToken();
 
@@ -50,44 +94,40 @@ const request = async (endpoint: string, options: RequestOptions = {}, isRetry =
         headers["X-CSRFToken"] = csrfToken;
     }
 
-    const response = await fetchWithTimeout(`/api${endpoint}`, {
+    let response = await fetchWithTimeout(`/api${endpoint}`, {
         ...options,
         headers,
         credentials: "include", // Ensure cookies are sent with requests
     }, 30000);
 
+    if (response.status === 401 && !isRetry && !endpoint.includes('/auth/refresh/')) {
+        const error = await response.json().catch(() => null);
 
-    if (response.status === 401) {
-        // Token expired or invalid
-        if (endpoint.includes("/auth/status/")) {
-            if (!isRetry) {
-                console.log("Auth check failed, retrying once...");
-                await new Promise(resolve => setTimeout(resolve, 500));
-                return request(endpoint, options, true);
+        // 只在 access token 過期時 refresh
+        if (error?.code.toLowerCase() === 'access_token_expired') {
+            if (!isRefreshing) {
+                isRefreshing = true;
+                refreshPromise = refreshTokenAndRetryFailedRequests();
             }
-            // 如果 retry 也失敗，不做 return，讓下面 !response.ok 的邏輯去拋出錯誤
-        } else if (!endpoint.includes("/auth/logout/")) {
-            console.log("Unauthorized request, clearing state and redirecting to landing...");
-            performLogout("/");
-            return;
+
+            return new Promise((resolve, reject) => {
+                pendingRequests.push({ endpoint, options, resolve, reject });
+            });
         }
+
+        // 其他 401 直接丟錯
+        throw new Error(error?.detail || 'Unauthorized');
     }
 
     if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || "API Request Failed");
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.detail || 'API Error');
     }
 
-    if (response.status === 204) {
-        return null;
-    }
+    if (response.status === 204) return null;
 
     const data = await response.json().catch(() => null);
-
-    // Automatically update CSRF token if returned in response body
-    if (data && data.csrfToken) {
-        internalCsrfToken = data.csrfToken;
-    }
+    if (data?.csrfToken) internalCsrfToken = data.csrfToken;
 
     return data;
 };

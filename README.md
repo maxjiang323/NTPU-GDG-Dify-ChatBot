@@ -370,3 +370,38 @@ DEFAULT_THROTTLE_RATES = {
     'chat': '20/min',  # 改為想要的限制
 }
 ```
+
+---
+
+## JWT Token Refresh 流程與安全實務
+
+### 1. Token 儲存方式
+- **Access Token / Refresh Token** 皆儲存於 **HttpOnly Cookie**，前端 JS 無法直接存取，防止 XSS 竊取。
+- **CSRF Token** 由後端 `/api/auth/status/` 回傳，前端以 closure 變數暫存，僅用於 header 傳遞。
+
+### 2. 自動 Refresh Token 流程
+- 當 Access Token 過期（API 回傳 401）時，前端自動呼叫 `/api/auth/refresh/`，嘗試用 Refresh Token 換取新 Access Token。
+- 若 refresh 成功，會自動重試原本失敗的 API 請求，使用者無感。
+- 若 refresh 也失敗（refresh token 過期/失效），前端自動清除所有 token 並導向登入頁，保留原本路徑於 `?next=` 或 localStorage。
+
+### 3. 防止多重 refresh（Race Condition）
+- 前端僅允許同時一個 refresh 請求進行，其他 401 請求會等待 refresh 結果，避免多重觸發。
+- refresh 成功後，所有等待中的 API 會自動重試。
+- refresh 失敗時，所有等待中的 API 皆失敗並觸發登出。
+
+### 4. 後端設定（Django SimpleJWT）
+- `ACCESS_TOKEN_LIFETIME = 60 分鐘`
+- `REFRESH_TOKEN_LIFETIME = 1 天`
+- `ROTATE_REFRESH_TOKENS = True`（每次 refresh 產生新 refresh token）
+- `BLACKLIST_AFTER_ROTATION = True`（舊 refresh token 失效）
+- `/api/auth/refresh/` endpoint 會自動處理 cookie 設定與黑名單
+
+### 5. 實作重點
+- **前端**：`src/services/api.ts` 全域攔截 401，自動 refresh/retry，race control，安全導向登入頁
+- **後端**：`apps/accounts/views_token_refresh.py` 提供 refresh endpoint，cookie 設定安全屬性
+
+### 6. 實務安全建議
+- 不建議將 JWT 儲存於 localStorage/sessionStorage
+- 僅於 Access Token 過期時被動 refresh，避免定時輪詢
+- 登出時清除所有 cookie 並安全導向登入頁
+- 保留 next 路徑，提升用戶體驗
