@@ -24,6 +24,7 @@ class TokenRefreshView(APIView):
             response = JsonResponse({
                 'access': new_access,
                 'csrfToken': get_token(request),
+                'code': 'access_token_expired', # 前端用此 code 判斷是 access token 過期而非其他錯誤
             })
 
             response.set_cookie(
