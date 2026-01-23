@@ -1,6 +1,6 @@
 from django.shortcuts import redirect
 from django.contrib import messages
-from django.conf import settings
+from django.http import JsonResponse
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions, status
@@ -91,6 +91,24 @@ class AuthStatusView(APIView):
 
     def get(self, request):
         user = request.user
+
+        if not user.is_authenticated:
+            # 用 cookie 判斷登入狀態
+            access_token = request.COOKIES.get("access_token")
+
+            if access_token:
+                # 有 access_token cookie 但驗證失敗 → 過期
+                return JsonResponse(
+                    {"code": "access_token_expired", "detail": "Access token expired"},
+                    status=401
+                )
+            else:
+                # 沒有 access_token → 未登入
+                return JsonResponse(
+                    {"code": "not_authenticated", "detail": "User not authenticated"},
+                    status=401
+                )
+
         return Response({
             "isAuthenticated": True,
             "user": {

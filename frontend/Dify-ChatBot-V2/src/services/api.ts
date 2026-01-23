@@ -103,8 +103,7 @@ const request = async (endpoint: string, options: RequestOptions = {}, isRetry =
     if (response.status === 401 && !isRetry && !endpoint.includes('/auth/refresh/')) {
         const error = await response.json().catch(() => null);
 
-        // 只在 access token 過期時 refresh
-        if (error?.code.toLowerCase() === 'access_token_expired') {
+        if (error?.code === 'access_token_expired') {
             if (!isRefreshing) {
                 isRefreshing = true;
                 refreshPromise = refreshTokenAndRetryFailedRequests();
