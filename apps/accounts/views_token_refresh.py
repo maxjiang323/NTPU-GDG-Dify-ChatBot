@@ -8,6 +8,7 @@ from rest_framework_simplejwt.exceptions import TokenError
 
 class TokenRefreshView(APIView):
     permission_classes = [AllowAny]
+    authentication_classes = [] 
 
     def post(self, request):
         refresh_token = request.COOKIES.get('refresh_token')

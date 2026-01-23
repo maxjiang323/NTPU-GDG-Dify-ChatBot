@@ -4,13 +4,12 @@ from django.http import JsonResponse
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions, status
-from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework import exceptions
+from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from config.settings.base import COOKIE_SECURE, COOKIE_SAMESITE
 from rest_framework.authentication import SessionAuthentication
 from django.middleware.csrf import get_token
-from .authentication import CookieJWTAuthentication
+from django.contrib.auth import get_user_model
 
 def login_cancelled_redirect(request):
     """
@@ -85,7 +84,7 @@ class GoogleLoginCallback(APIView):
 
 class AuthStatusView(APIView):
     permission_classes = [permissions.AllowAny]
-    authentication_classes = [CookieJWTAuthentication]
+    authentication_classes = []
 
     def get(self, request):
         access_token = request.COOKIES.get("access_token")
@@ -98,17 +97,31 @@ class AuthStatusView(APIView):
                 status=401
             )
         
-        # 情況2：已成功認證 → 返回用戶資訊
-        if request.user and request.user.is_authenticated:
-            return Response({
-                "isAuthenticated": True,
-                "user": {
-                    "id": request.user.id,
-                    "email": request.user.email,
-                    "username": request.user.username
-                },
-                "csrfToken": get_token(request)
-            })
+        # 情況2：嘗試驗證 access_token
+        if access_token:
+            try:
+                token = AccessToken(access_token)  # ← 這會自動驗證！
+                user_id = token['user_id']  # ← 從 token 讀取 user_id
+
+                User = get_user_model()
+                try:
+                    user = User.objects.get(id=user_id)
+                    return Response({
+                        "isAuthenticated": True,
+                        "user": {
+                            "id": user.id,
+                            "email": user.email,
+                            "username": user.username
+                        },
+                        "csrfToken": get_token(request)
+                    })
+                except User.DoesNotExist:
+                    # 用戶不存在（不常見）
+                    pass
+                    
+            except (InvalidToken, TokenError):
+                # Token 無效或過期，繼續檢查其他情況
+                pass
         
         # 情況3：有 refresh_token（無論 access_token 是否存在）
         # 這表示用戶之前登入過，但 access_token 可能過期了
@@ -137,9 +150,13 @@ class LogoutView(APIView):
     Endpoint to logout user by clearing cookies.
     """
     permission_classes = [permissions.AllowAny]
+    authentication_classes = []
 
     def post(self, request):
         response = Response({"detail": "Logged out successfully"}, status=status.HTTP_200_OK)
+        # 確保設置 CSRF cookie
+        get_token(request)
+
         # Clear cookies
         response.delete_cookie('access_token', samesite=COOKIE_SAMESITE)
         response.delete_cookie('refresh_token', samesite=COOKIE_SAMESITE)
