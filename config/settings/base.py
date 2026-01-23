@@ -240,6 +240,7 @@ CACHES = {
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'apps.accounts.authentication.CookieJWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',  # for allauth logincallback
     ),
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',

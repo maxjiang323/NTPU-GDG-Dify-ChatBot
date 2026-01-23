@@ -5,11 +5,12 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions, status
 from rest_framework_simplejwt.tokens import RefreshToken
-import os
-import datetime
+from rest_framework import exceptions
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from config.settings.base import COOKIE_SECURE, COOKIE_SAMESITE
 from rest_framework.authentication import SessionAuthentication
 from django.middleware.csrf import get_token
+from .authentication import CookieJWTAuthentication
 
 def login_cancelled_redirect(request):
     """
@@ -83,41 +84,53 @@ class GoogleLoginCallback(APIView):
             return response
 
 class AuthStatusView(APIView):
-    """
-    Endpoint for Frontend to check authentication status.
-    Reads the HttpOnly cookie via the custom CookieJWTAuthentication class.
-    """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = [CookieJWTAuthentication]
 
     def get(self, request):
-        user = request.user
-
-        if not user.is_authenticated:
-            # 用 cookie 判斷登入狀態
-            access_token = request.COOKIES.get("access_token")
-
-            if access_token:
-                # 有 access_token cookie 但驗證失敗 → 過期
-                return JsonResponse(
-                    {"code": "access_token_expired", "detail": "Access token expired"},
-                    status=401
-                )
-            else:
-                # 沒有 access_token → 未登入
-                return JsonResponse(
-                    {"code": "not_authenticated", "detail": "User not authenticated"},
-                    status=401
-                )
-
-        return Response({
-            "isAuthenticated": True,
-            "user": {
-                "id": user.id,
-                "email": user.email,
-                "username": user.username
-            },
-            "csrfToken": get_token(request)
-        })
+        access_token = request.COOKIES.get("access_token")
+        refresh_token = request.COOKIES.get("refresh_token")
+        
+        # 情況1：完全沒有 token → 未登入
+        if not access_token and not refresh_token:
+            return JsonResponse(
+                {"code": "not_authenticated", "detail": "User not authenticated"},
+                status=401
+            )
+        
+        # 情況2：已成功認證 → 返回用戶資訊
+        if request.user and request.user.is_authenticated:
+            return Response({
+                "isAuthenticated": True,
+                "user": {
+                    "id": request.user.id,
+                    "email": request.user.email,
+                    "username": request.user.username
+                },
+                "csrfToken": get_token(request)
+            })
+        
+        # 情況3：有 refresh_token（無論 access_token 是否存在）
+        # 這表示用戶之前登入過，但 access_token 可能過期了
+        if refresh_token:
+            return JsonResponse(
+                {"code": "access_token_expired", "detail": "Access token expired"},
+                status=401
+            )
+        
+        # 情況4：只有 access_token，沒有 refresh_token
+        # 這是不正常的狀態，應該視為未登入
+        if access_token and not refresh_token:
+            return JsonResponse(
+                {"code": "not_authenticated", "detail": "Session expired"},
+                status=401
+            )
+        
+        # 情況5：其他意外情況
+        return JsonResponse(
+            {"code": "not_authenticated", "detail": "User not authenticated"},
+            status=401
+        )
 
 class LogoutView(APIView):
     """
