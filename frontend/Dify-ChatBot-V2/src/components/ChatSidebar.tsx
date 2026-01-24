@@ -9,7 +9,7 @@ import {
   X,
   MoreVertical,
   Edit,
-  Trash2
+  Trash2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -45,10 +45,25 @@ interface SidebarProps {
   isMobile: boolean;
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
-  onSelectChat: (chat: ChatHistory) => void;
+  onSelectChat: (chat: ChatHistory | null) => void; // 允許 null
   currentChatId?: string;
   currentChat?: ChatHistory;
   onUpdateChat: (chat: ChatHistory) => void;
+}
+
+interface ApiMessage {
+  id: number;
+  content: string;
+  role: "USER" | "ASSISTANT" | "SYSTEM";
+  created_at: string;
+}
+
+interface ApiSession {
+  id: string;
+  topic: string | null;
+  updated_at: string;
+  dify_conversation_id: string;
+  messages: ApiMessage[];
 }
 
 export default function ChatSidebar({
@@ -58,7 +73,7 @@ export default function ChatSidebar({
   onSelectChat,
   currentChatId,
   currentChat,
-  onUpdateChat
+  onUpdateChat,
 }: SidebarProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [chatHistory, setChatHistory] = useState<ChatHistory[]>([]);
@@ -72,17 +87,17 @@ export default function ChatSidebar({
     try {
       const sessions = await api.getSessions();
       // 將後端資料轉換為前端格式
-      const formattedSessions = sessions.map((s: any) => ({
+      const formattedSessions = sessions.map((s: ApiSession) => ({
         id: s.id,
         title: s.topic || "無標題對話",
         time: new Date(s.updated_at).toLocaleString(),
         difyConversationId: s.dify_conversation_id,
-        messages: s.messages.map((m: any) => ({
+        messages: s.messages.map((m: ApiMessage) => ({
           id: m.id,
           text: m.content,
           isUser: m.role === "USER",
-          timestamp: new Date(m.created_at).toLocaleTimeString()
-        }))
+          timestamp: new Date(m.created_at).toLocaleTimeString(),
+        })),
       }));
       setChatHistory(formattedSessions);
 
@@ -106,20 +121,22 @@ export default function ChatSidebar({
       // 避免將臨時對話（還沒拿到正式 ID）加入歷史清單，防止重複顯示
       if (currentChat.id.startsWith("temp-")) return;
 
-      setChatHistory(prevHistory => {
-        const exists = prevHistory.some(chat => chat.id === currentChat.id);
+      setChatHistory((prevHistory) => {
+        const exists = prevHistory.some((chat) => chat.id === currentChat.id);
         if (exists) {
-          return prevHistory.map(chat =>
-            chat.id === currentChat.id ? currentChat : chat
+          return prevHistory.map((chat) =>
+            chat.id === currentChat.id ? currentChat : chat,
           );
         } else {
           // 加入新對話，同時確保過濾掉任何可能殘留的臨時對話
-          return [currentChat, ...prevHistory.filter(c => !c.id.startsWith("temp-"))];
+          return [
+            currentChat,
+            ...prevHistory.filter((c) => !c.id.startsWith("temp-")),
+          ];
         }
       });
     }
   }, [currentChat]);
-
 
   const toggleSidebar = () => {
     setIsOpen(!isOpen);
@@ -130,10 +147,10 @@ export default function ChatSidebar({
       try {
         await api.updateSession(selectedChat.id, newChatTitle);
         const updatedChat = { ...selectedChat, title: newChatTitle };
-        setChatHistory(prevHistory =>
-          prevHistory.map(chat =>
-            chat.id === selectedChat.id ? updatedChat : chat
-          )
+        setChatHistory((prevHistory) =>
+          prevHistory.map((chat) =>
+            chat.id === selectedChat.id ? updatedChat : chat,
+          ),
         );
         onUpdateChat(updatedChat);
         setIsRenameDialogOpen(false);
@@ -148,8 +165,12 @@ export default function ChatSidebar({
     if (selectedChat) {
       try {
         await api.deleteSession(selectedChat.id);
-        const deletedIndex = chatHistory.findIndex(chat => chat.id === selectedChat.id);
-        const newHistory = chatHistory.filter(chat => chat.id !== selectedChat.id);
+        const deletedIndex = chatHistory.findIndex(
+          (chat) => chat.id === selectedChat.id,
+        );
+        const newHistory = chatHistory.filter(
+          (chat) => chat.id !== selectedChat.id,
+        );
         setChatHistory(newHistory);
         setIsDeleteDialogOpen(false);
         toast.success("已刪除紀錄");
@@ -158,11 +179,12 @@ export default function ChatSidebar({
         if (selectedChat.id === currentChatId) {
           if (newHistory.length > 0) {
             // 嘗試選擇下一個，如果沒有則選擇上一個（現在的 index 指向的就是原本的下一個）
-            const nextChat = newHistory[deletedIndex] || newHistory[newHistory.length - 1];
+            const nextChat =
+              newHistory[deletedIndex] || newHistory[newHistory.length - 1];
             onSelectChat(nextChat);
           } else {
             // 沒有對話了，重置為新對話
-            onSelectChat(null as any);
+            onSelectChat(null); // 直接傳 null，不再需要 as any
           }
         }
       } catch (err) {
@@ -183,11 +205,11 @@ export default function ChatSidebar({
   };
 
   const handleNewChat = () => {
-    onSelectChat(null as any);
+    onSelectChat(null); // 而不是 null as any
   };
 
-  const filteredHistory = chatHistory.filter(chat =>
-    chat.title.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredHistory = chatHistory.filter((chat) =>
+    chat.title.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   if (isMobile && !isOpen) {
@@ -195,7 +217,9 @@ export default function ChatSidebar({
   }
 
   return (
-    <div className={`${isMobile ? 'fixed inset-y-0 left-0 z-40' : 'relative'} ${isOpen ? 'block' : 'hidden'} bg-sidebar border-r w-64 h-full flex flex-col`}>
+    <div
+      className={`${isMobile ? "fixed inset-y-0 left-0 z-40" : "relative"} ${isOpen ? "block" : "hidden"} bg-sidebar border-r w-64 h-full flex flex-col`}
+    >
       <div className="p-4 flex items-center justify-between border-b">
         <h2 className="font-semibold text-lg">歷史紀錄</h2>
         {isMobile && (
@@ -228,17 +252,24 @@ export default function ChatSidebar({
         {filteredHistory.map((chat) => (
           <div
             key={chat.id}
-            className={`rounded-md p-3 text-sm mb-1 hover:bg-sidebar-accent cursor-pointer flex justify-between items-center group ${chat.id === currentChatId ? 'bg-sidebar-accent' : ''
-              }`}
+            className={`rounded-md p-3 text-sm mb-1 hover:bg-sidebar-accent cursor-pointer flex justify-between items-center group ${
+              chat.id === currentChatId ? "bg-sidebar-accent" : ""
+            }`}
             onClick={() => onSelectChat(chat)}
           >
             <span className="truncate">{chat.title}</span>
             <div className="flex items-center">
-              <span className="text-xs text-muted-foreground mr-2">{chat.time}</span>
+              <span className="text-xs text-muted-foreground mr-2">
+                {chat.time}
+              </span>
               {!chat.id.startsWith("temp-") && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 opacity-0 group-hover:opacity-100"
+                    >
                       <MoreVertical className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
@@ -248,7 +279,10 @@ export default function ChatSidebar({
                       重新命名
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem className="text-destructive" onClick={() => openDeleteDialog(chat)}>
+                    <DropdownMenuItem
+                      className="text-destructive"
+                      onClick={() => openDeleteDialog(chat)}
+                    >
                       <Trash2 className="mr-2 h-4 w-4" />
                       刪除對話
                     </DropdownMenuItem>
@@ -270,9 +304,7 @@ export default function ChatSidebar({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>重新命名對話</DialogTitle>
-            <DialogDescription>
-              請輸入新的對話名稱
-            </DialogDescription>
+            <DialogDescription>請輸入新的對話名稱</DialogDescription>
           </DialogHeader>
           <Input
             value={newChatTitle}
@@ -300,14 +332,18 @@ export default function ChatSidebar({
           <DialogHeader>
             <DialogTitle>刪除對話</DialogTitle>
             <DialogDescription>
-              {selectedChat ? `確定要刪除「${selectedChat.title}」嗎？此操作無法還原。` : "確定要刪除這個對話嗎？此操作無法還原。"}
+              {selectedChat
+                ? `確定要刪除「${selectedChat.title}」嗎？此操作無法還原。`
+                : "確定要刪除這個對話嗎？此操作無法還原。"}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <DialogClose asChild>
               <Button variant="outline">取消</Button>
             </DialogClose>
-            <Button variant="destructive" onClick={handleDeleteChat}>刪除</Button>
+            <Button variant="destructive" onClick={handleDeleteChat}>
+              刪除
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
