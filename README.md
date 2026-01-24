@@ -155,7 +155,8 @@ else:
 
 ### 後端特性
 - ✅ **Google SSO 整合**: 使用 `django-allauth` 實現 Google 單一登入
-- ✅ **JWT 認證**: 支援 Token 黑名單、Token 旋轉、自訂 Cookie-based 認證
+- ✅ **JWT 自動刷新機制**: 支援無感 Access Token 刷新，短期閒置使用者免重新登入
+- ✅ **智慧 CSRF 處理**: 業務 API 完整檢查，認證端點適度豁免避免死鎖
 - ✅ **即時串流**: Server-Sent Events (SSE) 實現 AI 回覆的即時串流
 - ✅ **聊天管理**: 完整的對話、訊息紀錄管理
 - ✅ **API 安全**: 速率限制、輸入驗證、CSRF 防護
@@ -197,6 +198,41 @@ else:
 
 #### 自定義認證後端
 透過 `CookieJWTAuthentication` 自動從 Cookie 中提取並驗證 JWT，並結合 CSRF 驗證邏輯。
+
+#### JWT 自動刷新機制 (Auto Refresh)
+*   **無感體驗**: Access Token 過期（1小時）時自動刷新，使用者無需重新登入
+*   **觸發機制**: 
+    - 前端 API 攔截 `access_token_expired` 錯誤碼
+    - 自動發起 `/api/auth/refresh/` 請求（豁免 CSRF 檢查）
+    - 重試原本失敗的請求，使用者僅感受輕微延遲
+*   **刷新流程**:
+    ```
+    1. 前端請求 → Access Token 過期 → 後端返回 access_token_expired
+    2. 前端觸發刷新 → POST /api/auth/refresh/（使用 Refresh Token）
+    3. 後端驗證 → 發放新 Access/Refresh Token（Set-Cookie）
+    4. 前端重試原請求 → 成功完成操作
+    ```
+*   **安全性保證**:
+    - Refresh Token 儲存於 HttpOnly Cookie，無法被 XSS 竊取
+    - Token Rotation：每次刷新產生新 Refresh Token，舊的加入黑名單
+    - 長期未使用（1天）：Refresh Token 過期 → 要求重新登入
+
+#### 智慧 CSRF 防護策略
+*   **分層檢查策略**:
+    - **業務 API**（聊天、資料操作）：完整 CSRF 檢查，防止狀態變更攻擊
+    - **認證端點豁免**：
+      - `/api/auth/refresh/`：POST 請求豁免（避免 Token 失效死鎖）
+      - `/api/auth/logout/`：POST 請求豁免（允許失效時登出）
+      - `/api/auth/status/`：GET 請求不檢查（僅讀取狀態）
+*   **安全平衡**: 保持敏感操作的完整防護，適當放寬認證流程限制
+*   **防死鎖設計**: 避免 Access Token 與 CSRF Token 同時失效時的無限循環
+
+#### 認證狀態精確判斷
+*   **三種狀態區分** (`AuthStatusView.get()`):
+    1. ✅ **有效 Access Token** → 返回用戶資訊 + CSRF Token
+    2. 🔄 **Access Token 過期 + 有 Refresh Token** → 返回 `access_token_expired`（觸發自動刷新）
+    3. ❌ **完全無有效 Token** → 返回 `not_authenticated`（需重新登入）
+*   **防止誤判**: 精確識別 token 狀態，避免不必要的登出
 
 ### 2. 聊天代理與串流 (Chat Proxy & Streaming)
 
@@ -377,12 +413,27 @@ DEFAULT_THROTTLE_RATES = {
 
 ### 1. Token 儲存方式
 - **Access Token / Refresh Token** 皆儲存於 **HttpOnly Cookie**，前端 JS 無法直接存取，防止 XSS 竊取。
-- **CSRF Token** 由後端 `/api/auth/status/` 回傳，前端以 closure 變數暫存，僅用於 header 傳遞。
+- **CSRF Token** 由後端 `/api/auth/status/` 回傳，前端以 closure 變數 (`internalCsrfToken`) 暫存，僅用於 header 傳遞。
 
 ### 2. 自動 Refresh Token 流程
-- 當 Access Token 過期（API 回傳 401）時，前端自動呼叫 `/api/auth/refresh/`，嘗試用 Refresh Token 換取新 Access Token。
-- 若 refresh 成功，會自動重試原本失敗的 API 請求，使用者無感。
-- 若 refresh 也失敗（refresh token 過期/失效），前端自動清除所有 token 並導向登入頁，保留原本路徑於 `?next=` 或 localStorage。
+#### 觸發條件：
+- Access Token 過期（1小時）但 Refresh Token 仍有效（30天）
+- 後端返回特定錯誤碼：`{"code": "access_token_expired"}`
+
+#### 前端處理流程：
+1. **偵測錯誤碼**：前端 API 層攔截 `access_token_expired`
+2. **單次刷新控制**：避免多個請求同時觸發刷新（`isRefreshing` 標誌）
+3. **請求隊列管理**：暫存等待中的請求到 `pendingRequests`
+4. **觸發刷新**：發送 POST `/api/auth/refresh/`（豁免 CSRF 檢查）
+5. **結果處理**：
+   - ✅ 成功：更新 Cookie，重試所有暫存請求
+   - ❌ 失敗（Refresh Token 也過期）：觸發登出流程
+
+#### 後端刷新端點：
+- **路徑**：`POST /api/auth/refresh/`
+- **豁免 CSRF**：允許在 token 失效時呼叫
+- **Token Rotation**：每次刷新產生新的 Refresh Token
+- **黑名單機制**：舊的 Refresh Token 加入黑名單防止重用
 
 ### 3. 防止多重 refresh（Race Condition）
 - 前端僅允許同時一個 refresh 請求進行，其他 401 請求會等待 refresh 結果，避免多重觸發。
@@ -397,11 +448,21 @@ DEFAULT_THROTTLE_RATES = {
 - `/api/auth/refresh/` endpoint 會自動處理 cookie 設定與黑名單
 
 ### 5. 實作重點
-- **前端**：`src/services/api.ts` 全域攔截 401，自動 refresh/retry，race control，安全導向登入頁
-- **後端**：`apps/accounts/views_token_refresh.py` 提供 refresh endpoint，cookie 設定安全屬性
+#### 前端實現 (`src/services/api.ts`)
+- **請求攔截機制**：`request()` 函數統一處理所有 API 請求
+- **自動刷新觸發**：偵測 `access_token_expired` 錯誤碼時自動觸發刷新
+- **Race Condition 控制**：使用 `isRefreshing` 和 `refreshPromise` 避免多重刷新
+- **請求隊列管理**：`pendingRequests` 暫存等待中的請求，刷新後重試
+- **安全導向**：刷新失敗時呼叫 `performLogout()`，安全跳轉至登入頁
+
+#### 後端實現
+- **Refresh 端點**：`apps/accounts/views_token_refresh.py` 提供 `TokenRefreshView`
+- **狀態檢查端點**：`apps/accounts/views.py` 中的 `AuthStatusView` 精確判斷認證狀態
+- **Cookie 安全設定**：HttpOnly + Secure + SameSite，根據環境自動調整
+- **智慧 CSRF 檢查**：`CookieJWTAuthentication` 實作分層防護策略
+- **Token Rotation**：SimpleJWT 配置自動處理 Token 旋轉與黑名單
 
 ### 6. 實務安全建議
 - 不建議將 JWT 儲存於 localStorage/sessionStorage
 - 僅於 Access Token 過期時被動 refresh，避免定時輪詢
 - 登出時清除所有 cookie 並安全導向登入頁
-- 保留 next 路徑，提升用戶體驗
