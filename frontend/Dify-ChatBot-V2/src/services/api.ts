@@ -7,16 +7,19 @@ interface RequestOptions extends RequestInit {
 
 interface ApiMessage {
   id: number;
-  content: string;
+  session: string; // session ID (UUID)
   role: "USER" | "ASSISTANT" | "SYSTEM";
-  created_at: string;
+  content: string;
+  created_at: string; // ISO 8601 字串
 }
 
 interface ApiSession {
-  id: string;
+  id: string; // UUID
+  user: string; // user ID
   topic: string | null;
-  updated_at: string;
   dify_conversation_id: string;
+  created_at: string; // ISO 8601 字串
+  updated_at: string; // ISO 8601 字串
   messages: ApiMessage[];
 }
 

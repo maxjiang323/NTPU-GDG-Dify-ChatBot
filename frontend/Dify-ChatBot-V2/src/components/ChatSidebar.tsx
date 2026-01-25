@@ -31,13 +31,14 @@ import { toast } from "sonner";
 
 interface ChatHistory {
   id: string;
-  title: string;
-  time: string;
+  title: string; // topic 或 "無標題對話"
+  time: string; // formatted updated_at
+  difyConversationId: string;
   messages: Array<{
     id: number;
-    text: string;
-    isUser: boolean;
-    timestamp: string;
+    text: string; // content
+    isUser: boolean; // role === "USER"
+    timestamp: string; // formatted created_at
   }>;
 }
 
@@ -53,16 +54,19 @@ interface SidebarProps {
 
 interface ApiMessage {
   id: number;
-  content: string;
+  session: string; // session ID (UUID)
   role: "USER" | "ASSISTANT" | "SYSTEM";
-  created_at: string;
+  content: string;
+  created_at: string; // ISO 8601 字串
 }
 
 interface ApiSession {
-  id: string;
+  id: string; // UUID
+  user: string; // user ID
   topic: string | null;
-  updated_at: string;
   dify_conversation_id: string;
+  created_at: string; // ISO 8601 字串
+  updated_at: string; // ISO 8601 字串
   messages: ApiMessage[];
 }
 
