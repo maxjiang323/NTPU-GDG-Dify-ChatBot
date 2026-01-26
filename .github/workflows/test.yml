@@ -1,0 +1,51 @@
+name: Django & Playwright Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    # 環境變數分析：
+    # 這裡只放入測試啟動「最小必要」的變數，避開不必要的依賴
+    env:
+      DJANGO_ENV: local
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      CSRF_TRUSTED_ORIGINS: http://localhost,http://127.0.0.1
+      DIFY_API_URL: https://api.dify.ai/v1
+      DIFY_API_KEY: "dummy-key-for-testing"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Install Dependencies
+        # CI 環境建議使用 sync 以確保環境與 uv.lock 完全一致
+        run: uv sync --dev
+
+      - name: Install Playwright Browsers & Deps
+        run: uv run playwright install chromium --with-deps
+
+      - name: Run Pytest & Generate Reports
+        run: |
+          # 執行測試，產出終端機摘要報告 + HTML 詳細報告
+          uv run pytest --cov=apps --cov-report=term-missing --cov-report=html
+
+      - name: Upload Coverage Report Artifact
+        # 將生成的 HTML 覆蓋率報告上傳，測試完畢後可於 GitHub 分頁下載查看
+        uses: actions/upload-artifact@v4
+        if: always() # 即使測試失敗也上傳報告，協助分析
+        with:
+          name: coverage-report
+          path: htmlcov/
+          retention-days: 7

@@ -29,18 +29,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
-interface ChatHistory {
-  id: string;
-  title: string; // topic 或 "無標題對話"
-  time: string; // formatted updated_at
-  difyConversationId: string;
-  messages: Array<{
-    id: number;
-    text: string; // content
-    isUser: boolean; // role === "USER"
-    timestamp: string; // formatted created_at
-  }>;
-}
+import { ChatHistory } from "@/types/chat";
 
 interface SidebarProps {
   isMobile: boolean;

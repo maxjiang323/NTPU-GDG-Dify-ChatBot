@@ -46,4 +46,7 @@ frontend/Dify-ChatBot-V2/*.local
 *.sln
 *.sw?
 
+# test
+.coverage
+htmlcov
 

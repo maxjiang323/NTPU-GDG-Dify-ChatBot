@@ -21,7 +21,7 @@ class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
         domain = email.split('@')[-1]
         if domain not in allowed_domains:
             from django.contrib import messages
-            from allauth.exceptions import ImmediateHttpResponse
+            from allauth.core.exceptions import ImmediateHttpResponse
             from django.shortcuts import redirect
             import urllib.parse
             
