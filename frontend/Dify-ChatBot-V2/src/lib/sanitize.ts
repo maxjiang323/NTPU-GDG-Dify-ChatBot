@@ -9,10 +9,25 @@ const purifier = DOMPurify();
 /**
  * 根據 Beyond XSS 建議，加強對屬性的檢查
  */
+// 添加一個 WeakMap 來保存節點的原始 target 值
+const originalTargetMap = new WeakMap<Element, string>();
+
+// 在 beforeSanitizeAttributes 中保存原始 target 值
+purifier.addHook("beforeSanitizeAttributes", (node) => {
+  if (node.tagName === "A" && node.hasAttribute("target")) {
+    const targetValue = node.getAttribute("target");
+    if (targetValue && targetValue.toLowerCase() === "_blank") {
+      originalTargetMap.set(node, targetValue);
+    }
+  }
+});
+
 purifier.addHook("afterSanitizeAttributes", (node) => {
   // 1. 確保所有標向新視窗的連結都具備安全性 (防護 Tabnabbing)
-  if (node.tagName === "A" && node.getAttribute("target") === "_blank") {
+  if (node.tagName === "A" && originalTargetMap.has(node)) {
+    node.setAttribute("target", "_blank");
     node.setAttribute("rel", "noopener noreferrer");
+    originalTargetMap.delete(node);
   }
 
   // 2. Class 劫持與 UI 欺騙防護 (防護惡意 Tailwind 注入)

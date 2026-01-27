@@ -210,6 +210,7 @@ else:
 - ✅ **TailwindCSS**: 實用優先的 CSS 框架
 - ✅ **響應式設計**: 適配各種設備尺寸
 - ✅ **實時聊天**: 即時訊息串流顯示
+- ✅ **工業級資安清理**: 整合 DOMPurify 與 Beyond XSS 實務，防範 Tabnabbing 與惡意樣式注入
 
 ---
 
@@ -283,7 +284,23 @@ else:
   3. ❌ **完全無有效 Token** → 返回 `not_authenticated`（需重新登入）
 - **防止誤判**: 精確識別 token 狀態，避免不必要的登出
 
-### 2. 聊天代理與串流 (Chat Proxy & Streaming)
+### 2. 前端內容資安清理 (Frontend Content Sanitization)
+
+為了徹底門絕 XSS 與相關 UI 欺騙攻擊，本系統實施了多層次的內容清理機制：
+
+- **DOMPurify 深度整合**: 使用 `DOMPurify` 進行輸出過濾，並自訂白名單，僅允許安全的 HTML 標籤與屬性。
+- **反制 Tabnabbing (Reverse Tabnabbing)**:
+  - 透過 `beforeSanitizeAttributes` 與 `afterSanitizeAttributes` 鉤子，強制所有 `target="_blank"` 的連結加上 `rel="noopener noreferrer"`。
+  - 即使輸入的 HTML 中漏掉這兩個屬性，系統也會自動補齊，確保當前分頁不被新開分頁惡意控制。
+- **樣式劫持防護 (Class Hijacking)**:
+  - 嚴格控制 `class` 屬性，僅允許 `prose-`、`markdown-` 以及特定安全的排版類別。
+  - 禁止攻擊者注入 `fixed`, `absolute`, `top-0` 等類別來遮蓋或偽造 UI 介面。
+- **URL 安全校驗**:
+  - 整合 `@braintree/sanitize-url` 並結合原生 `URL` 類校驗協議。
+  - 僅允許 `http:`, `https:` 以及特定安全格式的 `data:image` (如 PNG/JPG base64)。
+  - 禁止 `javascript:` 偽協議及惡意的 SVG/HTML data URI。
+
+### 3. 聊天代理與串流 (Chat Proxy & Streaming)
 
 #### API 金鑰保護
 

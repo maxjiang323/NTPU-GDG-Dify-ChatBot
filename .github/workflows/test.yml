@@ -43,6 +43,11 @@ jobs:
           npm run build
           ls -la dist/
 
+      - name: Run Frontend Tests
+        run: |
+          cd frontend/Dify-ChatBot-V2
+          npm run test -- --run
+
       - name: Run Pytest & Generate Reports
         run: |
           # 執行測試，產出終端機摘要報告 + HTML 詳細報告

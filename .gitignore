@@ -49,4 +49,5 @@ frontend/Dify-ChatBot-V2/*.local
 # test
 .coverage
 htmlcov
+frontend/Dify-ChatBot-V2/coverage
 
