@@ -20,9 +20,14 @@ export default defineConfig(({ mode }) => ({
     globals: true,
     environment: "jsdom",
     setupFiles: "./src/test/setup.ts",
+    reporters: ["default", "html"],
+    outputFile: {
+      html: "./test-report/index.html",
+    },
     coverage: {
-      provider: 'v8',
-      reporter: ['text', 'json', 'html'],
+      provider: "v8",
+      reporter: ["text", "json", "html"],
+      reportsDirectory: "./coverage",
     },
   },
   build: {

@@ -1,4 +1,4 @@
-name: Django & Playwright Tests
+name: Backend & Frontend Tests
 
 on:
   push:
@@ -46,18 +46,28 @@ jobs:
       - name: Run Frontend Tests
         run: |
           cd frontend/Dify-ChatBot-V2
-          npm run test -- --run
+          npm run test:coverage
 
       - name: Run Pytest & Generate Reports
         run: |
           # 執行測試，產出終端機摘要報告 + HTML 詳細報告
           uv run pytest --cov=apps --cov-report=term-missing --cov-report=html
 
-      - name: Upload Coverage Report Artifact
+      - name: Upload Backend Coverage Report
         # 將生成的 HTML 覆蓋率報告上傳，測試完畢後可於 GitHub 分頁下載查看
         uses: actions/upload-artifact@v4
         if: always() # 即使測試失敗也上傳報告，協助分析
         with:
-          name: coverage-report
+          name: backend-coverage-report
           path: htmlcov/
+          retention-days: 7
+
+      - name: Upload Frontend Test Reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frontend-test-reports
+          path: |
+            frontend/Dify-ChatBot-V2/test-report/
+            frontend/Dify-ChatBot-V2/coverage/
           retention-days: 7
