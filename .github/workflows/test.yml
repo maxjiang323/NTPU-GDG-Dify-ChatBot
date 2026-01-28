@@ -77,4 +77,5 @@ jobs:
           path: |
             frontend/Dify-ChatBot-V2/test-report/
             frontend/Dify-ChatBot-V2/coverage/
+            frontend/Dify-ChatBot-V2/eslint-report.txt
           retention-days: 7
