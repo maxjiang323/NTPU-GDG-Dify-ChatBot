@@ -43,6 +43,13 @@ jobs:
           npm run build
           ls -la dist/
 
+      - name: Run ESLint and Export Report
+        run: |
+          cd frontend/Dify-ChatBot-V2
+          # 執行 lint 並將結果輸出到檔案，同時顯示在終端機
+          npm run lint 2>&1 | tee eslint-report.txt || echo "ESLint found issues (see report)"
+        continue-on-error: true # 允許 lint 錯誤不阻擋後續測試
+
       - name: Run Frontend Tests
         run: |
           cd frontend/Dify-ChatBot-V2
