@@ -81,6 +81,8 @@ sudo .venv/bin/playwright install-deps
 
 ### 2. 執行測試
 
+#### 後端與 E2E 測試 (Pytest)
+
 ```bash
 # 執行所有測試並查看覆蓋率摘要
 pytest
@@ -91,6 +93,20 @@ pytest --cov=apps --cov-report=html
 # 執行 E2E 測試並觀看瀏覽器操作畫面 (僅限支援 GUI 環境)
 pytest tests/e2e/ --headed
 ```
+
+#### 前端單元測試 (Vitest)
+
+針對前端的純邏輯處理與資安組件進行快速單元測試。
+
+```bash
+cd frontend/Dify-ChatBot-V2
+npm run test
+```
+
+**測試重點項目：**
+
+- **`src/lib/sanitize.ts`**: 驗證工業級 HTML 清理邏輯、XSS 防護、Tabnabbing 防護，並確保與後端 **CSP (Content Security Policy)** 策略對齊。
+- **`src/lib/utils.ts`**: 驗證 Tailwind CSS 類別合併邏輯 (`cn` helper)。
 
 ### 3. CI/CD 持續整合
 
