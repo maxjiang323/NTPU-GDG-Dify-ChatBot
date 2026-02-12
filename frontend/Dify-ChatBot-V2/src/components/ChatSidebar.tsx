@@ -226,6 +226,8 @@ export default function ChatSidebar({
         <div className="relative">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
+            id="search-sessions"
+            name="search"
             placeholder="搜尋對話"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -300,6 +302,8 @@ export default function ChatSidebar({
             <DialogDescription>請輸入新的對話名稱</DialogDescription>
           </DialogHeader>
           <Input
+            id="rename-session-input"
+            name="new-topic"
             value={newChatTitle}
             onChange={(e) => setNewChatTitle(e.target.value)}
             placeholder="輸入對話名稱"

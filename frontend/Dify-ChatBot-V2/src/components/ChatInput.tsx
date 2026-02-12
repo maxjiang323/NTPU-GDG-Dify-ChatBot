@@ -8,7 +8,10 @@ interface ChatInputProps {
   sessionId?: string;
 }
 
-export default function ChatInput({ onSendMessage, sessionId }: ChatInputProps) {
+export default function ChatInput({
+  onSendMessage,
+  sessionId,
+}: ChatInputProps) {
   const [message, setMessage] = useState("");
   const [isComposing, setIsComposing] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -38,7 +41,7 @@ export default function ChatInput({ onSendMessage, sessionId }: ChatInputProps) 
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey && !isComposing) {
+    if (e.key === "Enter" && !e.shiftKey && !isComposing) {
       e.preventDefault();
       sendMessage();
     }
@@ -48,6 +51,8 @@ export default function ChatInput({ onSendMessage, sessionId }: ChatInputProps) 
     <form onSubmit={handleSubmit} className="border-t p-4 bg-background">
       <div className="relative">
         <Textarea
+          id="chat-message-input"
+          name="message"
           ref={textareaRef}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
