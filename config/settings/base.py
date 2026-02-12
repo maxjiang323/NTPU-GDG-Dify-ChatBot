@@ -84,6 +84,7 @@ AUTHENTICATION_BACKENDS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'csp.middleware.CSPMiddleware', # Content Security Policy
     'whitenoise.middleware.WhiteNoiseMiddleware',  # ← 加在這裡 (SecurityMiddleware 之後)
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -287,4 +288,34 @@ LOGGING = {
             'propagate': True,
         },
     },
+}
+
+# ==========================================
+# Content Security Policy (CSP) 設定
+# django-csp 4.0 使用字典格式
+# ==========================================
+from csp.constants import NONCE, SELF, STRICT_DYNAMIC
+
+CONTENT_SECURITY_POLICY = {
+    "DIRECTIVES": {
+        "default-src": [SELF],
+        "script-src": [
+            SELF, 
+            NONCE, 
+            "https://cdn.gpteng.co"
+        ],
+        "style-src": [
+            SELF, 
+            "'unsafe-inline'", 
+            "https://fonts.googleapis.com"
+        ],
+        "img-src": [SELF, "data:", "https:"],
+        "connect-src": [SELF],
+        "font-src": [
+            SELF, 
+            "data:", 
+            "https://fonts.gstatic.com"
+        ],
+        "base-uri": [SELF],
+    }
 }

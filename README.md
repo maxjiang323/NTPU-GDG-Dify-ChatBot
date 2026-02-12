@@ -368,6 +368,39 @@ else:
 → 詳細錯誤只記錄在後端日誌，外部無法存取
 ```
 
+### 4. 嚴格內容安全政策 (Strict Content Security Policy, CSP)
+
+為了建立防禦 XSS 的最後一道防線，系統透過 `django-csp` 實施了嚴格的 CSP 策略：
+
+- **動態 Nonce 機制**:
+  - 後端為每次 HTML 請求生成隨機且唯一的 `nonce`。
+  - 僅帶有正確 `nonce` 屬性的腳本標籤（如 `gptengineer.js`）會被執行。
+- **混合白名單模式**:
+  - **腳本**: 允許來自 `self` 的本地 Vite 編譯資源，兼顧安全與生產環境佈署。
+  - **樣式**: 允許 `'unsafe-inline'` 以支援 React UI 函式庫，並信任 Google Fonts 網域。
+  - **資源網域**: 專門放行 `cdn.gpteng.co` (輔助腳本) 與 `gstatic.com` (字體檔案)。
+- **禁止危險源**:
+  - 封鎖所有未經授權的 inline script、`eval()` 函式及 `javascript:` 偽協議執行。
+- **靜態資源限制**:
+  - 僅允許來自 `self` 與受信任 CDN (`cdn.gpteng.co`) 的資源載入。
+- **圖片與樣式**:
+  - 嚴格限制圖片來源協議（僅限 HTTPS 與安全 Base64），降低資訊外洩風險。
+
+> **實作備註**: 本專案使用 `django-csp` 4.0+，採用最新的字典式設定格式 (`CONTENT_SECURITY_POLICY`) 與 `NONCE` 常數物件，而非舊版的獨立變數設定。
+
+#### CSP 安全效果驗證
+
+```
+正常頁面訪問
+→ Response Header 包含 Content-Security-Policy: default-src 'self'; script-src 'nonce-...'; ...
+→ index.html 腳本標籤包含隨機 nonce
+
+嘗試注入惡意腳本 <script>alert(1)</script>
+→ 瀏覽器發現標籤無 nonce 或 nonce 錯誤
+→ 報錯：Refused to execute script...
+→ 攻擊失敗 (即使前端清理失效，CSP 也能攔截)
+```
+
 ---
 
 ## API 文檔
@@ -377,7 +410,9 @@ else:
 #### 1. 獲取認證狀態
 
 ```
+
 GET /api/auth/status/
+
 ```
 
 返回當前使用者的認證狀態及 CSRF Token
