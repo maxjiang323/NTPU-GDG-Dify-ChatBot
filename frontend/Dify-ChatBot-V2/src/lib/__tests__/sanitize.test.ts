@@ -96,3 +96,43 @@ describe("sanitizeRedirectUrl", () => {
     expect(sanitizeRedirectUrl(sameOrigin)).toBe("/settings");
   });
 });
+
+describe("CSP Alignment (Content Security Policy)", () => {
+  /**
+   * 這些測試確保我們的清理邏輯與 base.py 中的 CSP 設定一致。
+   * CSP 策略概要：
+   * - script-src: SELF, NONCE (不允許 'unsafe-inline')
+   * - style-src: SELF, 'unsafe-inline'
+   * - img-src: SELF, data:, https:
+   */
+
+  it("should forbid <style> tags (preventing CSS Injection, aligned with strict style-src)", () => {
+    // 雖然 CSP style-src 可能允許某些 unsafe-inline，但 sanitize.ts 為了防禦 CSS Injection
+    // 仍然全面禁止 <style> 標籤，這是一種深度防禦行為。
+    const input = "<style>body { background: red; }</style><p>Content</p>";
+    expect(sanitizeHtml(input)).toBe("<p>Content</p>");
+  });
+
+  it("should strip inline event handlers (consistent with script-src no unsafe-inline)", () => {
+    // 我們的 CSP 在 script-src 中沒有排除 'unsafe-inline'，因此所有的 inline event handlers 都會被瀏覽器攔截。
+    // sanitizeHtml 也應該主動移除它們。
+    const input = '<img src="https://example.com/a.png" onerror="alert(1)">';
+    const output = sanitizeHtml(input);
+    expect(output).not.toContain("onerror");
+    expect(output).toContain('src="https://example.com/a.png"');
+  });
+
+  it("should allow images from https sources (consistent with img-src allowing https:)", () => {
+    const input = '<img src="https://trusted.site/image.jpg">';
+    expect(sanitizeHtml(input)).toContain(
+      'src="https://trusted.site/image.jpg"',
+    );
+  });
+
+  it("should allow safe data:image URIs (consistent with img-src and font-src allowing data:)", () => {
+    const safeData =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+    const input = `<img src="${safeData}">`;
+    expect(sanitizeHtml(input)).toContain(safeData);
+  });
+});
