@@ -14,7 +14,6 @@ DATABASES = {
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # 開發環境允許使用 DRF 可瀏覽 API 介面（方便除錯）
-# nosemgrep: python.django.security.audit.django-rest-framework.missing-throttle-config.missing-throttle-config
 REST_FRAMEWORK = { 
     **REST_FRAMEWORK,
     'DEFAULT_RENDERER_CLASSES': [

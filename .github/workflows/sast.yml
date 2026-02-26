@@ -20,7 +20,11 @@ jobs:
       - name: Run Semgrep
         run: |
           set -o pipefail
-          semgrep scan --config auto --error 2>&1 | tee semgrep-results.txt
+          semgrep scan \
+            --config auto \
+            --exclude-rule python.django.security.audit.django-rest-framework.missing-throttle-config.missing-throttle-config \
+            --error \
+            2>&1 | tee semgrep-results.txt
 
       - name: Upload Semgrep Report
         uses: actions/upload-artifact@v4

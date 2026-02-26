@@ -36,7 +36,6 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # ==========================================
 # DRF 安全設定 - 生產環境
 # ==========================================
-# nosemgrep: python.django.security.audit.django-rest-framework.missing-throttle-config.missing-throttle-config
 REST_FRAMEWORK = { 
     **REST_FRAMEWORK,
     'DEFAULT_RENDERER_CLASSES': [
