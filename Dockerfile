@@ -21,6 +21,8 @@ LABEL "framework"="django"
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
+RUN groupadd -r django && useradd -r -g django django
+
 WORKDIR /app
 
 COPY requirements.txt ./
@@ -31,8 +33,12 @@ COPY . .
 
 COPY --from=builder /app/frontend/dist ./frontend/Dify-ChatBot-V2/dist
 
+RUN chown -R django:django /app
+
 RUN SECRET_KEY=dummy_for_build python manage.py collectstatic --noinput
 
 EXPOSE 8080
+
+USER django
 
 CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8080"]

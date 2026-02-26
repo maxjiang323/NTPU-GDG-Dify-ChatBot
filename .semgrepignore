@@ -1,0 +1,19 @@
+# Exclude static files and third-party libraries from Semgrep scans
+staticfiles/
+node_modules/
+dist/
+.venv/
+__pycache__/
+*.min.js
+*.min.css
+
+# Frontend specific ignores
+frontend/Dify-ChatBot-V2/node_modules/
+frontend/Dify-ChatBot-V2/dist/
+frontend/Dify-ChatBot-V2/coverage/
+frontend/Dify-ChatBot-V2/test-report/
+
+# Databases and environment files
+db.sqlite3
+.env
+.env.*
