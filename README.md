@@ -108,10 +108,15 @@ npm run test
 - **`src/lib/sanitize.ts`**: 驗證工業級 HTML 清理邏輯、XSS 防護、Tabnabbing 防護，並確保與後端 **CSP (Content Security Policy)** 策略對齊。
 - **`src/lib/utils.ts`**: 驗證 Tailwind CSS 類別合併邏輯 (`cn` helper)。
 
-### 3. CI/CD 持續整合
+### 3. CI/CD 持續整合 (GitHub Actions)
 
-專案整合了 **GitHub Actions** (`.github/workflows/test.yml`)。
-每當有新的程式碼推送至 `main` 分支或提交 Pull Request 時，系統會自動在雲端跑完所有測試，確保功能的穩定性。
+專案整合了多層次的 **GitHub Actions** 自動化流程，確保程式碼品質與資安：
+
+- **測試與部署 (`test.yml`)**: 每當 PR 或 Push 至 `main` 時，自動執行前後端整合測試、Playwright E2E 測試，並檢查構建流程。
+- **靜態安全掃描 (`sast.yml`)**: 使用 **Semgrep** 進行靜態應用程式安全測試 (SAST)，自動偵測 SQL 注入、XSS、不安全配置等漏洞。
+- **金鑰外洩偵測 (`check-secrets.yml`)**: 使用 **Gitleaks** 掃描完整 Git 歷史紀錄，防止 API Key、密碼或 Token 被意外提交。
+- **程式碼品質檢查 (`lint.yml`)**: 獨立執行 **ESLint** 檢查，確保前端程式碼符合規範。
+- **依賴自動更新**: 整合 **GitHub Dependabot**，每週自動檢查並提醒 Python 與 npm 套件的安全更新。
 
 ---
 
@@ -218,6 +223,8 @@ else:
 - ✅ **聊天管理**: 完整的對話、訊息紀錄管理
 - ✅ **API 安全**: 速率限制、輸入驗證、CSRF 防護
 - ✅ **生產就緒**: 環境分離、詳細日誌、安全 Headers
+- ✅ **容器化安全**: Dockerfile 採用 **非 Root 使用者 (Non-root user)** 運行，並實施層級權限控制
+- ✅ **持續安全掃描**: 整合 Gitleaks (金鑰偵測) 與 Semgrep (代碼漏洞掃描)
 
 ### 前端特性
 
@@ -227,6 +234,7 @@ else:
 - ✅ **響應式設計**: 適配各種設備尺寸
 - ✅ **實時聊天**: 即時訊息串流顯示
 - ✅ **工業級資安清理**: 整合 DOMPurify 與 Beyond XSS 實務，防範 Tabnabbing 與惡意樣式注入
+- ✅ **子資源完整性 (SRI)**: 對外部腳本 (如 `gptengineer.js`) 實施 **SRI 雜湊校驗**，防止 CDN 劫持攻擊
 
 ---
 

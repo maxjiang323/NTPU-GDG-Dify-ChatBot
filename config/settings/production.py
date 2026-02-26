@@ -42,6 +42,13 @@ REST_FRAMEWORK = {
         'rest_framework.renderers.JSONRenderer',  # 只允許 JSON 輸出，禁用可瀏覽 API
     ],
     'EXCEPTION_HANDLER': 'apps.accounts.exceptions.custom_exception_handler',  # 自訂錯誤處理
+    'DEFAULT_THROTTLE_CLASSES': (
+        'rest_framework.throttling.UserRateThrottle',
+    ),
+    'DEFAULT_THROTTLE_RATES': {
+        'user': '100/min',
+        'chat': '20/min',
+    },
 }
 
 # 額外的安全 Headers
