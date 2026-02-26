@@ -39,16 +39,9 @@ jobs:
       - name: Build Frontend
         run: |
           cd frontend/Dify-ChatBot-V2
-          npm install
+          npm ci
           npm run build
           ls -la dist/
-
-      - name: Run ESLint and Export Report
-        run: |
-          cd frontend/Dify-ChatBot-V2
-          set -o pipefail
-          # 執行 lint 並將結果輸出到檔案，同時顯示在終端機
-          npm run lint 2>&1 | tee eslint-report.txt
 
       - name: Run Frontend Tests
         if: success() || failure()
@@ -79,5 +72,4 @@ jobs:
           path: |
             frontend/Dify-ChatBot-V2/test-report/
             frontend/Dify-ChatBot-V2/coverage/
-            frontend/Dify-ChatBot-V2/eslint-report.txt
           retention-days: 7

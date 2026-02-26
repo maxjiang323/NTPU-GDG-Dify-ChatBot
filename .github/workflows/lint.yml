@@ -1,0 +1,41 @@
+name: Frontend Lint (ESLint)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  lint:
+    name: Run ESLint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/Dify-ChatBot-V2/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd frontend/Dify-ChatBot-V2
+          npm ci
+
+      - name: Run ESLint and Export Report
+        run: |
+          cd frontend/Dify-ChatBot-V2
+          set -o pipefail
+          npm run lint 2>&1 | tee eslint-report.txt
+
+      - name: Upload ESLint Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eslint-report
+          path: frontend/Dify-ChatBot-V2/eslint-report.txt
+          retention-days: 7
