@@ -37,10 +37,19 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # DRF 安全設定 - 生產環境
 # ==========================================
 REST_FRAMEWORK = {
+    **REST_FRAMEWORK,  # 繼承 base.py 的設定（認證、權限、Throttle 等）
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',  # 只允許 JSON 輸出，禁用可瀏覽 API
     ],
     'EXCEPTION_HANDLER': 'apps.accounts.exceptions.custom_exception_handler',  # 自訂錯誤處理
+    # 顯式宣告以通過 Semgrep 靜態掃描（實際值已由 base.py 繼承）
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'user': '100/min',
+        'chat': '20/min',
+    },
 }
 
 # 額外的安全 Headers
