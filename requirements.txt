@@ -19,7 +19,7 @@ gunicorn==23.0.0
 idna==3.11
 iniconfig==2.3.0
 packaging==25.0
-playwright==1.57.0
+playwright==1.58.0
 pluggy==1.6.0
 psycopg2-binary==2.9.11
 pyasn1==0.6.2
