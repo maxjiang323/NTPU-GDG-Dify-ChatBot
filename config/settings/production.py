@@ -36,8 +36,8 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # ==========================================
 # DRF 安全設定 - 生產環境
 # ==========================================
-REST_FRAMEWORK = {  # nosemgrep: python.django.security.audit.django-rest-framework.missing-throttle-config.missing-throttle-config
-    **REST_FRAMEWORK,  # 繼承 base.py 的設定（認證、權限、Throttle 等）
+REST_FRAMEWORK = {
+    **REST_FRAMEWORK,  # nosemgrep: python.django.security.audit.django-rest-framework.missing-throttle-config.missing-throttle-config
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',  # 只允許 JSON 輸出，禁用可瀏覽 API
     ],
