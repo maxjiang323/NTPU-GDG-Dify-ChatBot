@@ -32,3 +32,25 @@ EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
 # 解決 Playwright/pytest-asyncio 在同個執行緒跑同步資料庫操作時的 SynchronousOnlyOperation 錯誤
 import os
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
+
+# 匯入專屬測試環境的 REST_FRAMEWORK 設定
+# 這裡採直接定義而非繼承，是為了確保 SAST 掃描能正確識別 Throttle 配置，並移除不必要的 Renderer
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'apps.accounts.authentication.CookieJWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+    'DEFAULT_THROTTLE_CLASSES': (
+        'rest_framework.throttling.UserRateThrottle',
+    ),
+    'DEFAULT_THROTTLE_RATES': {
+        'user': '100/min',
+        'chat': '20/min',
+    },
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ],
+}
