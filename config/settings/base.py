@@ -237,23 +237,6 @@ CACHES = {
     }
 }
 
-# REST Framework Configuration
-REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'apps.accounts.authentication.CookieJWTAuthentication',
-        'rest_framework.authentication.SessionAuthentication',  # for allauth logincallback
-    ),
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
-    ],
-    'DEFAULT_THROTTLE_CLASSES': (
-        'rest_framework.throttling.UserRateThrottle',
-    ),
-    'DEFAULT_THROTTLE_RATES': {
-        'user': '100/min',
-        'chat': '20/min',
-    },
-}
 
 from datetime import timedelta
 SIMPLE_JWT = {

@@ -33,11 +33,23 @@ CSRF_COOKIE_SECURE = True  # CSRF Cookie 只能透過 HTTPS 傳輸
 # 信任 Zeabur 的代理伺服器
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
-# ==========================================
 # DRF 安全設定 - 生產環境
-# ==========================================
-REST_FRAMEWORK = { 
-    **REST_FRAMEWORK,
+# REST Framework Configuration
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'apps.accounts.authentication.CookieJWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',  # for allauth logincallback
+    ),
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+    'DEFAULT_THROTTLE_CLASSES': (
+        'rest_framework.throttling.UserRateThrottle',
+    ),
+    'DEFAULT_THROTTLE_RATES': {
+        'user': '100/min',
+        'chat': '20/min',
+    },
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',  # 只允許 JSON 輸出，禁用可瀏覽 API
     ],
