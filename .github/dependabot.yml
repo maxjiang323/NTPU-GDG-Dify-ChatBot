@@ -4,6 +4,8 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    # 將上限設為 0，Dependabot 就不會主動發送一般的版本更新 PR
+    open-pull-requests-limit: 0 
     labels:
       - "dependencies"
       - "python"
@@ -12,6 +14,7 @@ updates:
     directory: "/frontend/Dify-ChatBot-V2"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 0
     labels:
       - "dependencies"
       - "frontend"
