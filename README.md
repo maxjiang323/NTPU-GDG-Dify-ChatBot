@@ -25,7 +25,7 @@
 ```bash
 # 克隆專案
 git clone <repository>
-cd Dify-ChatBot-Backend
+cd NTPU-GDG-Dify-ChatBot
 
 # 安裝依賴 (使用 uv 或 pip)
 uv pip install -r requirements.txt
