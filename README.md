@@ -1,4 +1,4 @@
-# Dify ChatBot Backend (NTPU LawHelper)
+# NTPU-GDG-Dify-ChatBot (NTPU LawHelper)
 
 這是一個基於 Django 框架開發的聊天機器人後端 API 服務，主要用於整合 Dify 平台，提供使用者驗證、聊天對話管理及訊息紀錄儲存等功能。本系統目前服務於 **NTPU LawHelper (北大法規問答小幫手)**。
 
