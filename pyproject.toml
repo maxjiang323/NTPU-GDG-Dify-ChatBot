@@ -7,7 +7,7 @@ requires-python = ">=3.12"
 dependencies = [
     "cryptography>=46.0.3",
     "dj-database-url>=3.1.0",
-    "django>=6.0",
+    "django==6.0.3",
     "django-allauth>=65.13.1",
     "django-cors-headers>=4.9.0",
     "django-csp>=4.0",
