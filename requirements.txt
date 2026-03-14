@@ -24,7 +24,7 @@ psycopg2-binary==2.9.11
 pycparser==2.23
 pyee==13.0.0
 pygments==2.19.2
-pyjwt==2.10.1
+pyjwt==2.12.0
 pytest==9.0.2
 pytest-asyncio==1.3.0
 pytest-base-url==2.1.0
