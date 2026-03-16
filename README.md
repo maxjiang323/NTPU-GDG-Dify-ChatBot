@@ -138,6 +138,62 @@ else:
 
 ---
 
+## Chat API（查詢格式 / 初始化位置 / 範例）
+
+### 1) 查詢格式（串流）
+
+- Endpoint：`POST /api/chat/stream/`
+- Request JSON：
+
+```json
+{
+  "query": "使用者輸入的問題（最多 500 字元）",
+  "session_id": "可選：ChatSession 的 UUID（用來續聊）"
+}
+```
+
+- 初始化位置（前端）：`frontend/Dify-ChatBot-V2/src/services/difyService.ts` 內的 `sendMessageToDifyStreaming()` 會組出 payload（`query` / `session_id`）並用 `fetch` 發出 `POST /api/chat/stream/`。
+- 初始化位置（後端）：`apps/chat/views.py` 的 `ChatStreamView.post()` 會從 `request.data` 讀取 `query` / `session_id`，並在 `session_id` 缺省時建立新的 `ChatSession`。
+
+備註：這裡的 `session_id` 指的是「本系統的 `ChatSession.id`」，不是 Dify 的 `conversation_id`（Dify 的 ID 會由後端存到 `ChatSession.dify_conversation_id`）。
+
+### 2) 串流回傳格式（SSE）
+
+後端回傳 `text/event-stream`，每行以 `data:` 開頭、以空行分隔事件。常見事件：
+
+```text
+data: {"event":"session_created","session_id":"<chat_session_uuid>"}
+
+data: {"event":"message","answer":"...（token chunk）..."}
+
+data: {"event":"message_end","conversation_id":"<dify_conversation_id>"}
+```
+
+前端解析位置：`frontend/Dify-ChatBot-V2/src/services/difyService.ts` 會逐行解析 `data:` JSON，依 `event` 做 `message`/`message_end`/`session_created` 分支處理。
+
+### 3) Chat history（查找歷史）
+
+- Session list：`GET /api/chat/sessions/`（前端呼叫：`frontend/Dify-ChatBot-V2/src/components/ChatSidebar.tsx` → `api.getSessions()`）
+- Message list：`GET /api/chat/messages/?session=<chat_session_uuid>`（前端已封裝：`frontend/Dify-ChatBot-V2/src/services/api.ts` 的 `api.getMessages()`；目前 UI 主要直接使用 sessions 內含的 `messages`）
+
+### 4) curl 範例（需要 cookies + CSRF）
+
+本專案採用 HttpOnly cookie + CSRF；前端的 CSRF 主要由 `GET /api/auth/status/` 回傳的 `csrfToken` 初始化並在之後的 POST/DELETE/PATCH 自動帶上 `X-CSRFToken`。
+
+```bash
+# 1) 先拿到 csrfToken（需已登入，瀏覽器會自帶 cookies；用 curl 測試時需自備 cookie 檔）
+curl -sS -b cookies.txt -c cookies.txt http://localhost:8000/api/auth/status/
+
+# 2) 發出串流查詢（把 <CSRF_TOKEN> 換成上一個回應裡的 csrfToken）
+curl -N -b cookies.txt \
+  -H "Content-Type: application/json" \
+  -H "X-CSRFToken: <CSRF_TOKEN>" \
+  -d '{"query":"請用白話解釋契約成立要件","session_id":""}' \
+  http://localhost:8000/api/chat/stream/
+```
+
+---
+
 ## 專案結構 (Project Tree)
 
 ```text
