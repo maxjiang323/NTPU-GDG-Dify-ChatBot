@@ -24,3 +24,8 @@ yarn-error.log
 
 # Exclude OS files
 .DS_Store
+
+# Unused files or folders
+upload_files.py
+sccshoollaw.py
+./NTPU_Laws   

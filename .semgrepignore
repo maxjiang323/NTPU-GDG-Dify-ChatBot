@@ -17,3 +17,6 @@ frontend/Dify-ChatBot-V2/test-report/
 db.sqlite3
 .env
 .env.*
+
+# Unused files or folders
+./NTPU_Laws
