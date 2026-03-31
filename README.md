@@ -26,7 +26,7 @@ cd NTPU-GDG-Dify-ChatBot
 
 ```bash
 # 安裝依賴 (建議使用 uv，或 pip)
-uv pip install -r requirements.txt
+uv sync
 # 或
 pip install -r requirements.txt
 
