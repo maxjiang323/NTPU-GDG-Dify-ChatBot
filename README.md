@@ -9,9 +9,9 @@
 ## 系統需求
 
 - Python 3.12 或以上版本
-- Node.js 16 或以上版本 (前端開發)
-- PostgreSQL 或 SQLite (開發環境)
-- Redis (快取與 Token 黑名單)
+- Node.js 20 或以上版本
+- SQLite (開發環境)
+- Redis (快取)
 
 ## 快速開始
 
