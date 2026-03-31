@@ -44,7 +44,7 @@ python manage.py createsuperuser
 python manage.py runserver
 ```
 
-後端服務器將運行在 http://localhost:8000。
+後端服務器將運行在 http://localhost:8000 。
 
 ### 3. 啟動前端 (新開終端機)
 
@@ -58,7 +58,7 @@ npm install
 npm run dev
 ```
 
-前端開發伺服器將運行在 http://localhost:8080，API 請求會自動代理至後端。
+前端開發伺服器將運行在 http://localhost:8080 ，API 請求會自動代理至後端。
 
 ## 自動化測試
 
