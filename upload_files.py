@@ -129,8 +129,9 @@ research_admin
             "research_admin"
         ]
 
-        if text in valid:
-            return text
+        for v in valid:
+            if text == v:
+                return v
 
         return "school_admin"
 
