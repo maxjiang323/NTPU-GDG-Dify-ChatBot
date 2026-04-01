@@ -3,6 +3,7 @@ name = "dify-chatbot-backend"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
+license = { file = "LICENSE" }
 requires-python = ">=3.12"
 dependencies = [
     "cryptography==46.0.6",

@@ -36,6 +36,7 @@ frontend/Dify-ChatBot-V2/dist-ssr
 frontend/Dify-ChatBot-V2/*.local
 
 # Editor directories and files
+.codex
 .vscode/*
 !.vscode/extensions.json
 .idea

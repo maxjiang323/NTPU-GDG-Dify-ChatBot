@@ -1,0 +1,10 @@
+NTPU-GDG-Dify-ChatBot (NTPU LawHelper)
+Copyright 2026 Ming-Ju Chiang
+
+This project is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Attribution:
+Frontend portions under `frontend/Dify-ChatBot-V2` are based on the Lovable
+project https://lovable.dev/projects/143b11e0-fb4c-47b9-b578-7c14f8113770 by
+Yu-Han Huang, modified by Jun-Kai Xu, and further modified in this repository
+by Ming-Ju Chiang.
