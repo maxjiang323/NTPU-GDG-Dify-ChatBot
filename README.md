@@ -5,7 +5,7 @@
 前後端已整合：React 前端與 Django 後端共享同一部署環境，無需分開部署。
 
 前端程式參考並修改自 (Lovable): https://lovable.dev/projects/143b11e0-fb4c-47b9-b578-7c14f8113770
-作者：Yu-Han Huang；其後由 Jun-Kai Xu 修改；本專案由 Ming-Ju Chiang fork 並持續維護與修改。
+作者：Yu-Han Huang；其後由 Jun-Kai Xu 修改；本專案由 Ming-Ju Chiang 取得原作者同意後，基於其未公開專案進行修改與持續維護。
 
 ## 授權 (License)
 
