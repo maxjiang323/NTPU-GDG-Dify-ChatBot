@@ -23,6 +23,9 @@ def test_chat_reply_flow_e2e(page: Page, live_server, create_test_user):
             "value": sessionid,
             "domain": "localhost",
             "path": "/",
+            "httpOnly": True,
+            "secure": False,
+            "sameSite": "Lax",
         }
     ])
     

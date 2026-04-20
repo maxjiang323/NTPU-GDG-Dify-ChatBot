@@ -35,6 +35,9 @@ def test_google_login_flow_e2e(page: Page, live_server, create_test_user):
             "value": sessionid,
             "domain": "localhost", # live_server 預設通常是 localhost
             "path": "/",
+            "httpOnly": True,  # Django session cookies are httpOnly
+            "secure": False,  # live_server is http
+            "sameSite": "Lax",
         }
     ])
     
