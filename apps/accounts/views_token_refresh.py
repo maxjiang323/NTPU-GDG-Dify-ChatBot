@@ -2,10 +2,12 @@ from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from config.settings.base import COOKIE_SECURE, COOKIE_SAMESITE
 from django.http import JsonResponse
-from django.middleware.csrf import get_token
+from django.middleware.csrf import get_token, csrf_protect
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
+from django.utils.decorators import method_decorator
 
+@method_decorator(csrf_protect, name='dispatch')
 class TokenRefreshView(APIView):
     permission_classes = [AllowAny]
     authentication_classes = [] 

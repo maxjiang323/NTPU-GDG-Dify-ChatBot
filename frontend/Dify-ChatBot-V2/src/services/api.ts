@@ -77,12 +77,16 @@ const performLogout = async (redirectPath: string = "/login") => {
 // refresh token 並重試失敗請求
 async function refreshTokenAndRetryFailedRequests() {
   try {
+    const csrfToken = getCsrfToken();
     const resp = await fetchWithTimeout(
       "/api/auth/refresh/",
       {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(csrfToken ? { "X-CSRFToken": csrfToken } : {}),
+        },
       },
       30000,
     );
