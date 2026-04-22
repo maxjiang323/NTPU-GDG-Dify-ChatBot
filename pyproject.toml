@@ -22,7 +22,7 @@ dependencies = [
     "pygments==2.20.0",
     "pyjwt==2.12.0",
     "pytest==9.0.3",
-    "python-dotenv>=1.2.1",
+    "python-dotenv>=1.2.2",
     "requests==2.33.0",
     "urllib3==2.6.3",
     "whitenoise>=6.11.0",
