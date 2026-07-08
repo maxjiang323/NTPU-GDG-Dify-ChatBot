@@ -22,10 +22,10 @@ jobs:
       DIFY_API_KEY: "dummy-key-for-testing"
 
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@v4
 
       - name: Install uv
-        uses: astral-sh/setup-uv@887a942a15af3a7626099df99e897a18d9e5ab3a # v5.1.0
+        uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
 
@@ -60,7 +60,7 @@ jobs:
 
       - name: Upload Backend Coverage Report
         # 將生成的 HTML 覆蓋率報告上傳，測試完畢後可於 GitHub 分頁下載查看
-        uses: actions/upload-artifact@0b2256b8c012f0874dc3919b9ab1d47786821213 # v4.3.0
+        uses: actions/upload-artifact@v4
         if: always() # 即使測試失敗也上傳報告，協助分析
         with:
           name: backend-coverage-report
@@ -68,7 +68,7 @@ jobs:
           retention-days: 7
 
       - name: Upload Frontend Test Reports
-        uses: actions/upload-artifact@0b2256b8c012f0874dc3919b9ab1d47786821213 # v4.3.0
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: frontend-test-reports

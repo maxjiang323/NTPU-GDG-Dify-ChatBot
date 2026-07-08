@@ -9,8 +9,6 @@ updates:
     labels:
       - "dependencies"
       - "python"
-    cooldown:
-      default-days: 7
 
   - package-ecosystem: "npm"
     directory: "/frontend/Dify-ChatBot-V2"
@@ -20,5 +18,3 @@ updates:
     labels:
       - "dependencies"
       - "frontend"
-    cooldown:
-      default-days: 7
