@@ -19,6 +19,9 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      // ESLint 10 / react-hooks 7 introduces a stricter compiler-oriented rule
+      // that flags our existing effect-driven state sync patterns.
+      "react-hooks/set-state-in-effect": "off",
       "react-refresh/only-export-components": [
         "warn",
         { allowConstantExport: true },

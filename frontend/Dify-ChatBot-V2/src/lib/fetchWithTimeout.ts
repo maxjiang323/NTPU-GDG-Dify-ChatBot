@@ -16,7 +16,7 @@ export async function fetchWithTimeout(
     } catch (error) {
         clearTimeout(timeoutId);
         if (error instanceof Error && error.name === 'AbortError') {
-            throw new Error('請求超時，請檢查網路連線');
+            throw new Error('請求超時，請檢查網路連線', { cause: error });
         }
         throw error;
     }
